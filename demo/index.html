@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>raml-path-to-object demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../raml-docs-helpers/raml-docs-parser.html">
+  <link rel="import" href="../../raml-path-selector/raml-path-selector.html">
+  <link rel="import" href="../raml-path-to-object.html">
+  <style is="custom-style" include="demo-pages-shared-styles">
+  .vertical-section-container {
+    max-width: 600px;
+  }
+  .content {
+    @apply(--layout-horizontal);
+  }
+  raml-path-selector {
+    width: 300px;
+    overflow: auto;
+  }
+  .details {
+    @apply(--layout-flex);
+    margin-left: 16px;
+  }
+  </style>
+</head>
+
+<body unresolved>
+  <template is="dom-bind" id="app">
+    <div class="vertical-section-container centered">
+      <raml-docs-parser raml="{{raml}}"></raml-docs-parser>
+      <raml-path-to-object
+        raml="[[raml.specification]]"
+        selected-path="{{selectedPath}}"
+        selected-object="{{selectedObject}}"
+        is-selected-method="{{isSelectedMethod}}"
+        is-selected-resource="{{isSelectedResource}}"
+        is-selected-documentation="{{isSelectedDocumentation}}"></raml-path-to-object>
+      <h3>The `raml-path-to-object`</h3>
+      <div class="content">
+        <raml-path-selector raml="[[raml.specification]]" selected-path="{{selectedPath}}"></raml-path-selector>
+
+        <section class="details">
+          <div hidden$="[[!isSelectedMethod]]">
+            <h3>Selected method</h3>
+            <p>[[selectedObject.method]] [[selectedObject.displayName]]</p>
+            <p>[[selectedObject.description]]</p>
+          </div>
+          <div hidden$="[[!isSelectedResource]]">
+            <h3>Selected resource</h3>
+            <p>[[selectedObject.relativeUri]] [[selectedObject.displayName]]</p>
+            <p>[[selectedObject.description]]</p>
+          </div>
+          <div hidden$="[[!isSelectedDocumentation]]">
+            <h3>Selected documentation</h3>
+            <p>[[selectedObject.title]]</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+  <script>
+  var $ = function(selector) {
+    return document.querySelector(selector);
+  };
+  (function(app) {
+
+  })($('#app'));
+  </script>
+</body>
+
+</html>

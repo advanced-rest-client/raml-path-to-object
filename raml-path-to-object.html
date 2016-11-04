@@ -1,0 +1,121 @@
+<!--
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../raml-behaviors/raml-behavior.html">
+<!--
+`<raml-path-to-object>`
+Helper element that converts selected path to a RAML definition object.
+
+
+### Example
+```
+<raml-path-selector raml="[[raml]]" selected-path="{{selectedPath}}"></raml-path-selector>
+<raml-path-to-object
+  raml="[[raml]]"
+  selected-path="{{selectedPath}}"
+  selected-object="{{selectedObject}}"
+  is-selected-method="{{isSelectedMethod}}"
+  is-selected-resource="{{isSelectedResource}}"
+  is-selected-documentation="{{isSelectedDocumentation}}"></raml-path-to-object>
+```
+
+@group RAML Elements
+@element raml-path-to-object
+@demo demo/index.html
+-->
+<script>
+Polymer({
+  is: 'raml-path-to-object',
+  behaviors: [Polymer.RamlBehavior],
+  properties: {
+    // Currently selected path by the path selector (or anhy other)
+    selectedPath: String,
+    // An object read from path.
+    selectedObject: {
+      type: Object,
+      notify: true,
+      readOnly: true
+    },
+    // True if the selected object is a method definition
+    isSelectedMethod: {
+      type: Boolean,
+      value: false,
+      notify: true,
+      readOnly: true
+    },
+    // True if the selected object is a resource definition
+    isSelectedResource: {
+      type: Boolean,
+      value: false,
+      notify: true,
+      readOnly: true
+    },
+    // True if the selected object is a documentation definition
+    isSelectedDocumentation: {
+      type: Boolean,
+      value: false,
+      notify: true,
+      readOnly: true
+    }
+  },
+
+  observers: [
+    '_pathChanged(selectedPath, raml.*)'
+  ],
+  // Restore properties to the original state
+  clear: function() {
+    this._setSelectedObject(undefined);
+    this._setIsSelectedMethod(false);
+    this._setIsSelectedResource(false);
+    this._setIsSelectedDocumentation(false);
+  },
+
+  _pathChanged: function(path) {
+    if (!this.raml || !path) {
+      return this.clear();
+    }
+    var obj = this.get('raml.' + path);
+    if (!obj) {
+      return this.clear();
+    }
+    this._setSelectedObject(obj);
+    this._analysePath(path);
+  },
+
+  _analysePath: function(path) {
+    var parts = path.split('.');
+    parts.pop(); // Last array index
+    var type = parts.pop();
+    switch (type) {
+      case 'resources':
+        this._setIsSelectedMethod(false);
+        this._setIsSelectedResource(true);
+        this._setIsSelectedDocumentation(false);
+        break;
+      case 'methods':
+        this._setIsSelectedMethod(true);
+        this._setIsSelectedResource(false);
+        this._setIsSelectedDocumentation(false);
+        break;
+      case 'documentation':
+        this._setIsSelectedMethod(false);
+        this._setIsSelectedResource(false);
+        this._setIsSelectedDocumentation(true);
+        break;
+      default:
+        return this.clear();
+    }
+  }
+});
+</script>
