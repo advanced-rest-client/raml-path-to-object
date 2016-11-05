@@ -214,6 +214,9 @@ Polymer({
     var processedSecuritySchemas = [];
 
     for (var i = 0, len = parts.length; i < len; i++) {
+      if (!current) {
+        break;
+      }
       let segment = parts[i];
       if (segment === 'resources') {
         // Entering resources array
