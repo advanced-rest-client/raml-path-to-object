@@ -16,18 +16,63 @@ the License.
 <!--
 `<raml-path-to-object>`
 Helper element that converts selected path to a RAML definition object.
+It also fill up `selectedObject` with additional properties to match internall data model
+so this element must always be used whem displaying documentation using ARC's set of elements.
 
+RAML's JS parser don't add definitions for traits or security schemes to resources or
+methods. This element will look for the definition in source RAML and assign this definitions
+to the `selectedObject`.
 
-### Example
+To ilustrate, parser's JSON output for a method would be:
+```
+{
+  "method": "get",
+  "is": {
+    Paginated: {
+      "resourceType": "..."
+    }
+  },
+  "securedBy": [
+    "oauth_2_0"
+  ]
+}
+```
+But after using this element it would be:
+```
+{
+  "method": "get",
+  "is": [{
+    "name": "Paginated",
+    "description": "...",
+    ...
+  }],
+  "securedBy": [{
+    "describedBy": {...},
+    "settings": {...},
+    "name": "oauth_2_0"
+  }]
+}
+```
+
+Full list of affected properties:
+- is - replaced IDs with object definition
+- securedBy - replaced IDs with object definition
+- queryParameters - computed all possible params from all parent resources, traits ans security schemas
+- headers - computed all possible headers from all parent resources, traits ans security schemas
+- uriParameters - computed all possible params from all parent resources, traits ans security schemas
+- responses - computed all possible responses from all parent resources, traits ans security schemas
+- fullUrl - a full URL for given resource / method
+
+### Usage
 ```
 <raml-path-selector raml="[[raml]]" selected-path="{{selectedPath}}"></raml-path-selector>
 <raml-path-to-object
   raml="[[raml]]"
   selected-path="{{selectedPath}}"
   selected-object="{{selectedObject}}"
-  is-selected-method="{{isSelectedMethod}}"
-  is-selected-resource="{{isSelectedResource}}"
-  is-selected-documentation="{{isSelectedDocumentation}}"></raml-path-to-object>
+  is-method="{{isMethod}}"
+  is-resource="{{isResource}}"
+  is-documentation="{{isDocumentation}}"></raml-path-to-object>
 ```
 
 @group RAML Elements
@@ -91,14 +136,12 @@ Polymer({
     if (!this.raml || !path) {
       return this.clear();
     }
-    var obj = this.get('raml.' + path);
+    this._analysePath(path);
+    var obj = this._computeObject(path);
     if (!obj) {
       return this.clear();
     }
-    var fullUrl = this._computeFullUrl(path);
-    obj.fullUrl = fullUrl;
     this._setSelectedObject(obj);
-    this._analysePath(path);
     this._selectParent(path);
   },
 
@@ -145,28 +188,231 @@ Polymer({
     this._setSelectedParent(obj);
   },
   /**
-   * Computes full URL for given `path`.
+   * Inserts dependencies definitions to current node.
+   * It will update query parameters, uri parameters, security schemas etc with it's definitions.
    *
-   * @param {String} path A path to compute url for
-   * @returns {String} Full URL for given path.
+   * As a result, instead of array of ID's in the `is` property, full definition of trait will
+   * be inserted. `uriParameters` will be added as a `uriParameters` property. Ans so on.
+   *
+   * This function must be called after type of object has been determined.
+   * @param {String} path A path to the object.
    */
-  _computeFullUrl: function(path) {
+  _computeObject: function(path) {
+    if (this.isDocumentation) {
+      // No dependencies here
+      return this.get('raml.' + path);
+    }
     var raml = this.raml;
     var url = raml.baseUri;
-    var obj = raml;
+    var current = raml;
     var parts = path.split('.');
+
+    var traits = [];
+    var securitySchemes = [];
+    var uriParameters = raml.baseUriParameters || {};
+
+    var processedSecuritySchemas = [];
+
     for (var i = 0, len = parts.length; i < len; i++) {
-      if (parts[i] === 'resources') {
-        obj = obj[parts[i]];
-        i++;
+      let segment = parts[i];
+      if (segment === 'resources') {
+        // Entering resources array
+        current = current.resources;
+        continue;
+      } else if (segment === 'methods') {
+        current = current.methods;
+        // Entering methods array
+        continue;
       }
-      obj = obj[parts[i]];
-      if (obj.relativeUri) {
-        url += obj.relativeUri;
+      // If it's not an endpoint or method keywork then it must be a number.
+      let n = Number(segment);
+      if (n !== n) {
+        console.warn('Unknown segment ' + segment + ' in path ' + parts.join('.'));
+        break;
+      }
+      current = current[n];
+      if (!current) {
+        continue;
+      }
+      if (current.relativeUri) {
+        url += current.relativeUri;
+      }
+      if (current.uriParameters) {
+        uriParameters = Object.assign(uriParameters, current.uriParameters);
+      }
+      // looking for traits
+      if (current.is && current.is.length) {
+        for (let j = 0, len = current.is.length; j < len; j++) {
+          let t = this._findTrait(current.is[j]);
+          if (t) {
+            traits[traits.length] = t;
+          }
+        }
+      }
+      // looking for security schemes
+      if (current.securedBy && current.securedBy.length) {
+        for (let j = 0, len = current.securedBy.length; j < len; j++) {
+          let s = this._findSecurityScheme(current.securedBy[j]);
+          if (s) {
+            if (processedSecuritySchemas.indexOf(s.name) === -1) {
+              securitySchemes[securitySchemes.length] = s;
+              processedSecuritySchemas[processedSecuritySchemas.length] = s.name;
+            }
+          }
+        }
       }
     }
+    this._processParameters(current, traits, securitySchemes);
+    current.securedBy = securitySchemes;
+    current.is = traits;
     url = url.replace(/\/\//g, '/');
-    return url;
+    current.fullUrl = url;
+    current.uriParameters = uriParameters;
+    return current;
+  },
+  /**
+   * Finds a trait of given `name`
+   *
+   * @param {String} id Trait name to look for
+   * @returns {Object|null} Trait or null if not found.
+   */
+  _findTrait: function(id) {
+    if (typeof id !== 'string') {
+      var _name = Object.getOwnPropertyNames(id);
+      if (!_name.length) {
+        return null;
+      }
+      id = _name[0];
+    }
+    var d = this.raml;
+    if (!d || !d.traits || !d.traits.length) {
+      return null;
+    }
+    var t = d.traits;
+    for (var i = 0, len = t.length; i < len; i++) {
+      var trait = t[i];
+      var name = Object.getOwnPropertyNames(trait);
+      if (!name.length) {
+        continue;
+      }
+      name = name[0];
+      if (name === id) {
+        return trait[name];
+      }
+    }
+    return null;
+  },
+  /**
+   * Finds a security schema for given `id`
+   *
+   * @param {String} id The id of the security scheme
+   * @returns {Object|null} Security scheme or null if not found.
+   */
+  _findSecurityScheme: function(id) {
+    if (typeof id !== 'string') {
+      // parser added the definition already
+      return id;
+    }
+    var d = this.raml;
+    if (!d || !d.securitySchemes || !d.securitySchemes.length) {
+      return null;
+    }
+    var s = d.securitySchemes;
+    for (let i = 0, len = s.length; i < len; i++) {
+      var scheme = s[i];
+      var name = Object.getOwnPropertyNames(scheme);
+      if (!name.length) {
+        continue;
+      }
+      name = name[0];
+      if (name === id) {
+        return scheme[name];
+      }
+    }
+    return null;
+  },
+  /**
+   * Extracts Query parameters, Headers, Responses and bodies from current object, traits
+   * and security schemes amd sets the value of computation (map of corresponding objects) into the
+   * `objects`'s properties
+   *
+   * @param {Object} current Currently processed object
+   * @param {Array} traits List of traits to process
+   * @param {Array} securitySchemes List of security schemes to process
+   */
+  _processParameters: function(current, traits, securitySchemes) {
+    if (!current.queryParameters) {
+      current.queryParameters = {};
+    }
+    if (!current.headers) {
+      current.headers = {};
+    }
+    var responses = [];
+    traits.forEach(function(trait) {
+      var name = Object.getOwnPropertyNames(trait);
+      if (!name.length) {
+        return;
+      }
+      name = name[0];
+      var data = trait[name];
+      if (data.queryParameters) {
+        current.queryParameters = Object.assign(current.queryParameters, data.queryParameters);
+      }
+      if (data.headers) {
+        current.headers = Object.assign(current.headers, data.headers);
+      }
+      if (data.responses) {
+        if (data.responses instanceof Array) {
+          responses = responses.concat(data.responses);
+        } else {
+          for (var code in data.responses) {
+            responses[responses.length] = data.responses[code];
+          }
+        }
+      }
+    });
+    securitySchemes.forEach(function(ss) {
+      var name = Object.getOwnPropertyNames(ss);
+      if (!name.length) {
+        return;
+      }
+      name = name[0];
+      var schema = ss[name];
+      if (schema.describedBy) {
+        if (schema.describedBy.queryParameters) {
+          current.queryParameters = Object.assign(current.queryParameters,
+            schema.describedBy.queryParameters);
+        }
+        if (schema.describedBy.headers) {
+          current.headers = Object.assign(current.headers,
+            schema.describedBy.headers);
+        }
+        if (schema.describedBy.responses) {
+          responses = responses.concat(schema.describedBy.responses);
+        }
+      }
+    });
+    if (current.responses) {
+      if (current.responses instanceof Array) {
+        responses = responses.concat(current.responses);
+      } else {
+        for (var code in current.responses) {
+          responses[responses.length] = current.responses[code];
+        }
+      }
+    }
+    responses.sort(function(a, b) {
+      var aCode = Number(a.code);
+      var bCode = Number(b.code);
+      if (aCode > bCode) {
+        return 1;
+      }
+      if (aCode < bCode) {
+        return -1;
+      }
+      return 0;
+    });
+    current.responses = responses;
   }
 });
 </script>
