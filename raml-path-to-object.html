@@ -47,22 +47,28 @@ Polymer({
       notify: true,
       readOnly: true
     },
+    // Parent of the selected object (if any is possible)
+    selectedParent: {
+      type: Object,
+      notify: true,
+      readOnly: true
+    },
     // True if the selected object is a method definition
-    isSelectedMethod: {
+    isMethod: {
       type: Boolean,
       value: false,
       notify: true,
       readOnly: true
     },
     // True if the selected object is a resource definition
-    isSelectedResource: {
+    isResource: {
       type: Boolean,
       value: false,
       notify: true,
       readOnly: true
     },
     // True if the selected object is a documentation definition
-    isSelectedDocumentation: {
+    isDocumentation: {
       type: Boolean,
       value: false,
       notify: true,
@@ -76,9 +82,9 @@ Polymer({
   // Restore properties to the original state
   clear: function() {
     this._setSelectedObject(undefined);
-    this._setIsSelectedMethod(false);
-    this._setIsSelectedResource(false);
-    this._setIsSelectedDocumentation(false);
+    this._setIsMethod(false);
+    this._setIsResource(false);
+    this._setIsDocumentation(false);
   },
 
   _pathChanged: function(path) {
@@ -89,8 +95,11 @@ Polymer({
     if (!obj) {
       return this.clear();
     }
+    var fullUrl = this._computeFullUrl(path);
+    obj.fullUrl = fullUrl;
     this._setSelectedObject(obj);
     this._analysePath(path);
+    this._selectParent(path);
   },
 
   _analysePath: function(path) {
@@ -99,23 +108,65 @@ Polymer({
     var type = parts.pop();
     switch (type) {
       case 'resources':
-        this._setIsSelectedMethod(false);
-        this._setIsSelectedResource(true);
-        this._setIsSelectedDocumentation(false);
+        this._setIsMethod(false);
+        this._setIsResource(true);
+        this._setIsDocumentation(false);
         break;
       case 'methods':
-        this._setIsSelectedMethod(true);
-        this._setIsSelectedResource(false);
-        this._setIsSelectedDocumentation(false);
+        this._setIsMethod(true);
+        this._setIsResource(false);
+        this._setIsDocumentation(false);
         break;
       case 'documentation':
-        this._setIsSelectedMethod(false);
-        this._setIsSelectedResource(false);
-        this._setIsSelectedDocumentation(true);
+        this._setIsMethod(false);
+        this._setIsResource(false);
+        this._setIsDocumentation(true);
         break;
       default:
         return this.clear();
     }
+  },
+
+  _selectParent: function(path) {
+    if (!(this.isMethod || this.isResource)) {
+      // No parent.
+      return this._setSelectedParent(undefined);
+    }
+    var parts = path.split('.');
+    parts.splice(parts.length - 2, 2);
+    var parentPath = parts.join('.');
+    if (!parentPath) {
+      return this._setSelectedParent(undefined);
+    }
+    var obj = this.get('raml.' + parentPath);
+    if (!obj) {
+      return this._setSelectedParent(undefined);
+    }
+    this._setSelectedParent(obj);
+  },
+  /**
+   * Computes full URL for given `path`.
+   *
+   * @param {String} path A path to compute url for
+   * @returns {String} Full URL for given path.
+   */
+  _computeFullUrl: function(path) {
+    var raml = this.raml;
+    var url = raml.baseUri;
+    var obj = raml;
+    var parts = path.split('.');
+    for (var i = 0, len = parts.length; i < len; i++) {
+      if (parts[i] === 'resources') {
+        obj = obj[parts[i]];
+        i++;
+      }
+      obj = obj[parts[i]];
+      if (obj.relativeUri) {
+        url += obj.relativeUri;
+      }
+    }
+    url = url.replace(/\/\//g, '/');
+    return url;
   }
 });
 </script>

@@ -46,25 +46,34 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         raml="[[raml.specification]]"
         selected-path="{{selectedPath}}"
         selected-object="{{selectedObject}}"
-        is-selected-method="{{isSelectedMethod}}"
-        is-selected-resource="{{isSelectedResource}}"
-        is-selected-documentation="{{isSelectedDocumentation}}"></raml-path-to-object>
+        selected-parent="{{selectedParent}}"
+        is-method="{{isMethod}}"
+        is-resource="{{isResource}}"
+        is-documentation="{{isDocumentation}}"></raml-path-to-object>
       <h3>The `raml-path-to-object`</h3>
       <div class="content">
         <raml-path-selector raml="[[raml.specification]]" selected-path="{{selectedPath}}"></raml-path-selector>
 
         <section class="details">
-          <div hidden$="[[!isSelectedMethod]]">
+          <div hidden$="[[!isMethod]]">
             <h3>Selected method</h3>
             <p>[[selectedObject.method]] [[selectedObject.displayName]]</p>
             <p>[[selectedObject.description]]</p>
+            <p>[[selectedObject.fullUrl]]</p>
+            <div hidden$="[[!selectedParent]]">
+              <p>Parent resource: [[selectedParent.relativeUri]]</p>
+            </div>
           </div>
-          <div hidden$="[[!isSelectedResource]]">
+          <div hidden$="[[!isResource]]">
             <h3>Selected resource</h3>
             <p>[[selectedObject.relativeUri]] [[selectedObject.displayName]]</p>
             <p>[[selectedObject.description]]</p>
+            <p>[[selectedObject.fullUrl]]</p>
+            <div hidden$="[[!selectedParent]]">
+              <p>Parent resource: [[selectedParent.relativeUri]]</p>
+            </div>
           </div>
-          <div hidden$="[[!isSelectedDocumentation]]">
+          <div hidden$="[[!isDocumentation]]">
             <h3>Selected documentation</h3>
             <p>[[selectedObject.title]]</p>
           </div>
@@ -72,14 +81,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       </div>
     </div>
   </template>
-  <script>
-  var $ = function(selector) {
-    return document.querySelector(selector);
-  };
-  (function(app) {
-
-  })($('#app'));
-  </script>
 </body>
 
 </html>
