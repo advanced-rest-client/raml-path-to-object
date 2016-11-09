@@ -4,6 +4,8 @@ Helper element that converts selected path to a RAML definition object.
 It also fill up `selectedObject` with additional properties to match internall data model
 so this element must always be used whem displaying documentation using ARC's set of elements.
 
+*TODO: Union types**
+
 RAML's JS parser don't add definitions for traits or security schemes to resources or
 methods. This element will look for the definition in source RAML and assign this definitions
 to the `selectedObject`.

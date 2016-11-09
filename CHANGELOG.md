@@ -1,3 +1,13 @@
+<a name="1.0.5"></a>
+## [1.0.5](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.4...v1.0.5) (2016-11-09)
+
+
+### Update
+
+* Added types definition to the object. TODO: Support union types. See example at: https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/complex.raml ([7b336a3854a1213eafef674bdb60f7a2474094ae](https://github.com/advanced-rest-client/raml-path-to-object/commit/7b336a3854a1213eafef674bdb60f7a2474094ae))
+
+
+
 <a name="1.0.4"></a>
 ## [1.0.4](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.0...v1.0.4) (2016-11-07)
 
