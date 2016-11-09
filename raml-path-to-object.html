@@ -19,6 +19,8 @@ Helper element that converts selected path to a RAML definition object.
 It also fill up `selectedObject` with additional properties to match internall data model
 so this element must always be used whem displaying documentation using ARC's set of elements.
 
+**TODO: Union types**
+
 RAML's JS parser don't add definitions for traits or security schemes to resources or
 methods. This element will look for the definition in source RAML and assign this definitions
 to the `selectedObject`.
@@ -119,11 +121,21 @@ Polymer({
       value: false,
       notify: true,
       readOnly: true
+    },
+    // RAML base types. Anything else is user defined type.
+    baseTypes: {
+      type: Array,
+      readOnly: true,
+      value: function() {
+        return ['object', 'array','integer', 'string','number','boolean','datetime','file',
+          'null','any'];
+      }
     }
   },
 
   observers: [
-    '_pathChanged(selectedPath, raml.*)'
+    '_ramlChanged(raml.*)',
+    '_pathChanged(selectedPath)'
   ],
   // Restore properties to the original state
   clear: function() {
@@ -132,7 +144,9 @@ Polymer({
     this._setIsResource(false);
     this._setIsDocumentation(false);
   },
-
+  _ramlChanged: function() {
+    this.clear();
+  },
   _pathChanged: function(path) {
     if (!this.raml || !path) {
       return this.clear();
@@ -218,7 +232,7 @@ Polymer({
       if (!current) {
         break;
       }
-      let segment = parts[i];
+      var segment = parts[i];
       if (segment === 'resources') {
         // Entering resources array
         current = current.resources;
@@ -229,7 +243,7 @@ Polymer({
         continue;
       }
       // If it's not an endpoint or method keywork then it must be a number.
-      let n = Number(segment);
+      var n = Number(segment);
       if (n !== n) {
         console.warn('Unknown segment ' + segment + ' in path ' + parts.join('.'));
         break;
@@ -246,8 +260,8 @@ Polymer({
       }
       // looking for traits
       if (current.is && current.is.length) {
-        for (let j = 0, len = current.is.length; j < len; j++) {
-          let t = this._findTrait(current.is[j]);
+        for (var j = 0, lenT = current.is.length; j < lenT; j++) {
+          var t = this._findTrait(current.is[j]);
           if (t) {
             traits[traits.length] = t;
           }
@@ -255,8 +269,8 @@ Polymer({
       }
       // looking for security schemes
       if (current.securedBy && current.securedBy.length) {
-        for (let j = 0, len = current.securedBy.length; j < len; j++) {
-          let s = this._findSecurityScheme(current.securedBy[j]);
+        for (var k = 0, lenS = current.securedBy.length; k < lenS; k++) {
+          var s = this._findSecurityScheme(current.securedBy[k]);
           if (s) {
             if (processedSecuritySchemas.indexOf(s.name) === -1) {
               securitySchemes[securitySchemes.length] = s;
@@ -267,6 +281,7 @@ Polymer({
       }
     }
     this._processParameters(current, traits, securitySchemes);
+    this._processTypes(current);
     current.securedBy = securitySchemes;
     current.is = traits;
     url = url.replace(/\/\//g, '/');
@@ -322,7 +337,7 @@ Polymer({
       return null;
     }
     var s = d.securitySchemes;
-    for (let i = 0, len = s.length; i < len; i++) {
+    for (var i = 0, len = s.length; i < len; i++) {
       var scheme = s[i];
       var name = Object.getOwnPropertyNames(scheme);
       if (!name.length) {
@@ -417,6 +432,80 @@ Polymer({
       return 0;
     });
     current.responses = responses;
+  },
+
+  _processTypes: function(obj) {
+    this.__processBody(obj);
+    if (obj.responses && obj.responses.length) {
+      for (var i = 0, len = obj.responses.length; i < len; i++) {
+        this.__processBody(obj.responses[i]);
+      }
+    }
+  },
+
+  __processBody: function(obj) {
+    if (obj.body) {
+      for (var mime in obj.body) {
+        var def = obj.body[mime];
+        if (!def.type) {
+          continue;
+        }
+        this._assignTypes(def.type);
+      }
+    }
+  },
+  _assignTypes: function(types) {
+    for (var i = 0, len = types.length; i < len; i++) {
+      var typeName = types[i];
+      if (!typeName || typeof typeName !== 'string') {
+        continue;
+      }
+      if (this.baseTypes.indexOf(typeName) !== -1) {
+        //one of the base types
+        continue;
+      }
+      this._findAndAssignType(types, i, typeName);
+    }
+  },
+  /**
+   * Finds a type definition for given name.
+   *
+   * @param {Object} src A source object to which the value will be assigned to if found.
+   * It is required for recursive strategy when looking for a sub-types of a type
+   * @param {String} name Type name for find
+   * @returns {Object|null} A type definition or null if not found.
+   */
+  _findAndAssignType: function(srcArray, index, name) {
+    if (!name) {
+      return;
+    }
+    var def = this.raml;
+    if (!def || !def.types) {
+      return;
+    }
+    for (var i = 0, len = def.types.length; i < len; i++) {
+      var type = def.types[i];
+      var _name = Object.getOwnPropertyNames(type);
+      if (!_name.length) {
+        continue;
+      }
+      _name = _name[0];
+      if (_name !== name) {
+        continue;
+      }
+      type = type[name];
+      if (type.type) {
+        this._assignTypes(type.type);
+      }
+      if (type.properties) {
+        for (var property in type.properties) {
+          if (type.properties[property].type) {
+            this._assignTypes(type.properties[property].type);
+          }
+        }
+      }
+      srcArray[index] = type;
+    }
   }
 });
 </script>
