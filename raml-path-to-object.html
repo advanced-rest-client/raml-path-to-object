@@ -455,6 +455,7 @@ Polymer({
     }
   },
   _assignTypes: function(types) {
+    var counter = 0;
     for (var i = 0, len = types.length; i < len; i++) {
       var typeName = types[i];
       if (!typeName || typeof typeName !== 'string') {
@@ -464,7 +465,19 @@ Polymer({
         //one of the base types
         continue;
       }
-      this._findAndAssignType(types, i, typeName);
+      if (typeName.indexOf('|') !== -1) {
+        var namesList = typeName.split('|').map(function(item) {
+          return item.trim();
+        });
+        for (var j = 0, jLen = namesList.length; j < jLen; j++) {
+          this._findAndAssignType(types, counter, namesList[j]);
+          counter++;
+        }
+      } else {
+        this._findAndAssignType(types, counter, typeName);
+        counter++;
+      }
+
     }
   },
   /**
