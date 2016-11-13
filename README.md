@@ -4,8 +4,6 @@ Helper element that converts selected path to a RAML definition object.
 It also fill up `selectedObject` with additional properties to match internall data model
 so this element must always be used whem displaying documentation using ARC's set of elements.
 
-*TODO: Union types**
-
 RAML's JS parser don't add definitions for traits or security schemes to resources or
 methods. This element will look for the definition in source RAML and assign this definitions
 to the `selectedObject`.
@@ -61,4 +59,13 @@ Full list of affected properties:
   is-resource="{{isResource}}"
   is-documentation="{{isDocumentation}}"></raml-path-to-object>
 ```
+
+### The path
+Path is the JSON path to the value in the JSON structure. It is a string that contains structure
+information to get a value. For example:
+```
+resources.1.methods.0
+```
+means that the path to the value is through resources array, 2nd element, then methods array
+first element.
 
