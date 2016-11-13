@@ -90,6 +90,46 @@ first element.
 @hero hero.svg
 -->
 <script>
+if (!Object.keys) {
+  //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+  Object.keys = (function() {
+    'use strict';
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    var hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString');
+    var dontEnums = [
+      'toString',
+      'toLocaleString',
+      'valueOf',
+      'hasOwnProperty',
+      'isPrototypeOf',
+      'propertyIsEnumerable',
+      'constructor'
+    ];
+    var dontEnumsLength = dontEnums.length;
+    return function(obj) {
+      if (typeof obj !== 'object' && (typeof obj !== 'function' || obj === null)) {
+        throw new TypeError('Object.keys called on non-object');
+      }
+      var result = [];
+      var prop;
+      var i;
+      for (prop in obj) {
+        if (hasOwnProperty.call(obj, prop)) {
+          result.push(prop);
+        }
+      }
+      if (hasDontEnumBug) {
+        for (i = 0; i < dontEnumsLength; i++) {
+          if (hasOwnProperty.call(obj, dontEnums[i])) {
+            result.push(dontEnums[i]);
+          }
+        }
+      }
+      return result;
+    };
+  }());
+}
+
 Polymer({
   is: 'raml-path-to-object',
   behaviors: [Polymer.RamlBehavior],
@@ -443,10 +483,47 @@ Polymer({
 
   _processTypes: function(obj) {
     this.__processBody(obj);
-    if (obj.responses && obj.responses.length) {
-      for (var i = 0, len = obj.responses.length; i < len; i++) {
-        this.__processBody(obj.responses[i]);
-      }
+    this.__processBodyMethods(obj);
+    this.__processBodyResponses(obj);
+    this.__processBodyResources(obj);
+  },
+
+  __processBodyMethods: function(obj) {
+    if (!obj || !obj.methods || !obj.methods.length) {
+      return;
+    }
+    for (var i = 0, len = obj.methods.length; i < len; i++) {
+      this._processTypes(obj.methods[i]);
+    }
+  },
+
+  __processBodyResponses: function(obj) {
+    if (!obj || !obj.responses) {
+      return;
+    }
+    if (!(obj.responses instanceof Object)) {
+      return;
+    }
+    var names;
+    try {
+      names = Object.keys(obj.responses); //ES5 can thow error
+    } catch (e) {
+      return;
+    }
+    if (!names.length) {
+      return;
+    }
+    for (var i = 0, len = names.length; i < len; i++) {
+      this._processTypes(obj.responses[names[i]]);
+    }
+  },
+
+  __processBodyResources: function(obj) {
+    if (!obj || !obj.resources || !obj.resources.length) {
+      return;
+    }
+    for (var i = 0, len = obj.resources.length; i < len; i++) {
+      this._processTypes(obj.resources[i]);
     }
   },
 
