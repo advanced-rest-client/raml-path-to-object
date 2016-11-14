@@ -499,32 +499,51 @@ Polymer({
       if (!obj.body[mime].type || mime !== 'application/json') {
         return;
       }
-      self._assignTypes(obj.body[mime].type);
+      self._assignTypes(obj.body[mime].type, obj.body[mime]);
       if (!(obj.body[mime].properties instanceof Array)) {
-        if (!(obj.body[mime].type[0].properties &&
-          obj.body[mime].type[0].properties instanceof Array)) {
-          // hasn't been processed properly.
-          var res = self._extractTypeProperties(obj.body[mime]);
-          if (res) {
-            obj.body[mime].properties = res;
-            obj.body[mime].type = 'object';
-          }
-        }
+        self._fillMissingProperties(obj.body[mime]);
       }
       var generatedType = obj.body[mime].type;
 
-      if (generatedType && generatedType.length) {
+      if (generatedType && typeof generatedType !== 'string' && generatedType.length) {
         // Can be only one type here, even if this is union type.
-        if (obj.body[mime].type[0].properties) {
-          obj.body[mime].properties = obj.body[mime].type[0].properties;
+        var _computedType = generatedType[0];
+        if (_computedType.properties) {
+          obj.body[mime].properties = _computedType.properties;
+        }
+        if (_computedType.originalType) {
+          obj.body[mime].originalType = _computedType.originalType;
+        } else if (_computedType.name) {
+          obj.body[mime].originalType = _computedType.name;
         }
         obj.body[mime].type = 'object';
       }
     });
   },
 
-  _assignTypes: function(types) {
+  _fillMissingProperties: function(obj) {
+    if (typeof obj.type === 'string') {
+      if (obj.type === 'array') {
+        return;
+      }
+    }
+    if (!(obj.type[0].properties && obj.type[0].properties instanceof Array)) {
+      // hasn't been processed properly.
+      var res = this._extractTypeProperties(obj);
+      if (res) {
+        obj.properties = res;
+        obj.type = 'object';
+      }
+    }
+  },
+
+  _assignTypes: function(types, obj) {
     var counter = 0;
+    var _res;
+    this._cached = this._cached || {};
+    if (typeof types === 'string') {
+      return;
+    }
     for (var i = 0, len = types.length; i < len; i++) {
       var typeName = types[i];
       if (!typeName || typeof typeName !== 'string') {
@@ -532,7 +551,34 @@ Polymer({
       }
       if (this.baseTypes.indexOf(typeName) !== -1) {
         //one of the base types
-        continue;
+        if (typeName === 'array') {
+          if (typeof obj.items === 'string') {
+            if (this.baseTypes.indexOf(obj.items) !== -1) {
+              continue;
+            }
+            if (this._cached[obj.items]) {
+              _res = this._cached[obj.items];
+            } else {
+              _res = this._findAndAssignType(obj.items);
+              this._cached[obj.items] = _res;
+            }
+            if (!_res) {
+              continue;
+            }
+            obj.items = _res;
+          }
+          obj.type = 'array';
+          return;
+        } else if (typeName === 'object') {
+          var res = this._extractTypeProperties(obj);
+          if (res) {
+            obj.properties = res;
+            obj.type = 'object';
+          }
+          return;
+        }
+        obj.type = typeName;
+        return;
       }
       // Union type
       if (typeName.indexOf('|') !== -1) {
@@ -540,11 +586,29 @@ Polymer({
           return item.trim();
         });
         for (var j = 0, jLen = namesList.length; j < jLen; j++) {
-          this._findAndAssignType(types, counter, namesList[j]);
+
+          if (this._cached[namesList[j]]) {
+            _res = this._cached[namesList[j]];
+          } else {
+            _res = this._findAndAssignType(namesList[j]);
+            this._cached[typeName] = _res;
+          }
+
+          if (_res) {
+            types[counter] = _res;
+          }
           counter++;
         }
       } else {
-        this._findAndAssignType(types, counter, typeName);
+        if (this._cached[typeName]) {
+          _res = this._cached[typeName];
+        } else {
+          _res = this._findAndAssignType(typeName);
+          this._cached[typeName] = _res;
+        }
+        if (_res) {
+          types[counter] = _res;
+        }
         counter++;
       }
     }
@@ -557,22 +621,43 @@ Polymer({
    * @param {String} name Type name for find
    * @returns {Object|null} A type definition or null if not found.
    */
-  _findAndAssignType: function(srcArray, index, name) {
+  _findAndAssignType: function(name) {
     var type = this._findType(name);
     if (!type) {
       return;
     }
     if (typeof type.type === 'string') {
       // parsed already.
-      srcArray[index] = type;
-      return;
+      return type;
     }
-    var res = this._extractTypeProperties(type);
-    if (res) {
-      type.properties = res;
-      type.type = 'object';
+    if (type instanceof Array) {
+      var extractedTypes = [];
+      var self = this;
+      type.forEach(function(_type) {
+        var res = self._extractTypeProperties(_type);
+        if (res) {
+          _type.properties = res;
+          if (_type.name) {
+            _type.originalType = type.name;
+          }
+          _type.type = 'object';
+        }
+        extractedTypes[extractedTypes.length] = _type;
+      });
+      // srcArray[index] = extractedTypes;
+      type = extractedTypes;
+    } else {
+      var res = this._extractTypeProperties(type);
+      if (res) {
+        type.properties = res;
+        if (type.name) {
+          type.originalType = type.name;
+        }
+        type.type = 'object';
+      }
+      // srcArray[index] = type;
     }
-    srcArray[index] = type;
+    return type;
   },
   /**
    * Finds a type for given `id`. Returns `undefined` if not found.
@@ -623,6 +708,7 @@ Polymer({
       return result;
     }
   },
+
   _extractTypeProperties: function(obj) {
     if (!obj || typeof obj === 'string') {
       return;
@@ -658,45 +744,13 @@ Polymer({
           return props;
         }
         if (obj.type[0] === 'array') {
-          var _type;
-          var __type;
           if (typeof obj.items === 'string') {
-            _type = this._findType(obj.items);
-            if (_type) {
-              obj.items = _type;
-            }
-          } else {
-            if (obj.items.type instanceof Array && obj.items.type.length === 1) {
-              obj.items.type = obj.items.type[0];
-            }
-            var isArray = obj.items.type instanceof Array;
-            if (isArray && obj.items.type.length > 1) {
-              // Union types for the array items.
-              var _tmp = [];
-              obj.items.type.forEach(function(item) {
-                _type = self._findType(item);
-                if (_type) {
-                  self._extractTypeProperties(_type);
-                  _tmp[_tmp.length] = _type;
-                }
-              });
-              obj.items = _tmp;
-            } else {
-              if (this.baseTypes.indexOf(obj.items.type) === -1) {
-                _type = this._findType(obj.items.type);
-                if (_type) {
-                  __type = self._extractTypeProperties(_type);
-                  if (__type) {
-                    obj.items.properties = _type;
-                  } else {
-                    if (_type.properties) {
-                      obj.items.properties = obj.properties.concat(_type.properties);
-                    }
-                  }
-                }
-              }
-            }
+            obj.items = [obj.items];
+          } else if (obj.items.type) {
+            //it's an array definition
+            this._assignTypes(obj.items.type, obj.items);
           }
+          this._assignTypes(obj.items, obj);
         }
         // basic property without extension.
         obj.type = obj.type[0];
@@ -715,7 +769,10 @@ Polymer({
           if (prop.length === 1) {
             props[props.length] = prop[0];
           } else {
-            props[props.length] = prop;
+            // embeded object
+            obj.properties[name].properties = prop;
+            obj.properties[name].type = obj.properties[name].type[0];
+            props[props.length] = obj.properties[name];
           }
         });
         obj.properties = props;
@@ -767,12 +824,19 @@ Polymer({
             }
           }
         });
+        var currentType = obj.type[0];
+        if (typeof currentType === 'string') {
+          obj.originalType = currentType;
+        } else if (currentType && currentType.name) {
+          obj.originalType = currentType.name;
+        }
         obj.type = 'object';
       } else {
         var prop = self._extractTypeProperties(obj.type);
         if (prop) {
           obj.properties = obj.properties.concat(prop);
           obj.type = 'object';
+          obj.originalType = obj.name;
         }
       }
     }
