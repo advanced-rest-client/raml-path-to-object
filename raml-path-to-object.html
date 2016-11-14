@@ -90,45 +90,6 @@ first element.
 @hero hero.svg
 -->
 <script>
-if (!Object.keys) {
-  //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
-  Object.keys = (function() {
-    'use strict';
-    var hasOwnProperty = Object.prototype.hasOwnProperty;
-    var hasDontEnumBug = !({toString: null}).propertyIsEnumerable('toString');
-    var dontEnums = [
-      'toString',
-      'toLocaleString',
-      'valueOf',
-      'hasOwnProperty',
-      'isPrototypeOf',
-      'propertyIsEnumerable',
-      'constructor'
-    ];
-    var dontEnumsLength = dontEnums.length;
-    return function(obj) {
-      if (typeof obj !== 'object' && (typeof obj !== 'function' || obj === null)) {
-        throw new TypeError('Object.keys called on non-object');
-      }
-      var result = [];
-      var prop;
-      var i;
-      for (prop in obj) {
-        if (hasOwnProperty.call(obj, prop)) {
-          result.push(prop);
-        }
-      }
-      if (hasDontEnumBug) {
-        for (i = 0; i < dontEnumsLength; i++) {
-          if (hasOwnProperty.call(obj, dontEnums[i])) {
-            result.push(dontEnums[i]);
-          }
-        }
-      }
-      return result;
-    };
-  }());
-}
 
 Polymer({
   is: 'raml-path-to-object',
@@ -168,15 +129,6 @@ Polymer({
       value: false,
       notify: true,
       readOnly: true
-    },
-    // RAML base types. Anything else is user defined type.
-    baseTypes: {
-      type: Array,
-      readOnly: true,
-      value: function() {
-        return ['object', 'array','integer', 'string','number','boolean','datetime','file',
-          'null','any'];
-      }
     }
   },
 
@@ -328,9 +280,10 @@ Polymer({
       }
     }
     this._processParameters(current, traits, securitySchemes);
-    this._processTypes(current);
     current.securedBy = securitySchemes;
     current.is = traits;
+    this._processTypes(current);
+    // this._processTypesProperies(current);
     url = url.replace(/\/\//g, '/');
     current.fullUrl = url;
     current.uriParameters = uriParameters;
@@ -528,16 +481,48 @@ Polymer({
   },
 
   __processBody: function(obj) {
-    if (obj.body) {
-      for (var mime in obj.body) {
-        var def = obj.body[mime];
-        if (!def.type) {
-          continue;
-        }
-        this._assignTypes(def.type);
-      }
+    if (!obj.body) {
+      return;
     }
+    var mimes;
+    try {
+      mimes = Object.keys(obj.body); //ES5 can thow error
+    } catch (e) {
+      return;
+    }
+    if (!mimes.length) {
+      return;
+    }
+
+    var self = this;
+    mimes.forEach(function(mime) {
+      if (!obj.body[mime].type || mime !== 'application/json') {
+        return;
+      }
+      self._assignTypes(obj.body[mime].type);
+      if (!(obj.body[mime].properties instanceof Array)) {
+        if (!(obj.body[mime].type[0].properties &&
+          obj.body[mime].type[0].properties instanceof Array)) {
+          // hasn't been processed properly.
+          var res = self._extractTypeProperties(obj.body[mime]);
+          if (res) {
+            obj.body[mime].properties = res;
+            obj.body[mime].type = 'object';
+          }
+        }
+      }
+      var generatedType = obj.body[mime].type;
+
+      if (generatedType && generatedType.length) {
+        // Can be only one type here, even if this is union type.
+        if (obj.body[mime].type[0].properties) {
+          obj.body[mime].properties = obj.body[mime].type[0].properties;
+        }
+        obj.body[mime].type = 'object';
+      }
+    });
   },
+
   _assignTypes: function(types) {
     var counter = 0;
     for (var i = 0, len = types.length; i < len; i++) {
@@ -549,6 +534,7 @@ Polymer({
         //one of the base types
         continue;
       }
+      // Union type
       if (typeName.indexOf('|') !== -1) {
         var namesList = typeName.split('|').map(function(item) {
           return item.trim();
@@ -561,7 +547,6 @@ Polymer({
         this._findAndAssignType(types, counter, typeName);
         counter++;
       }
-
     }
   },
   /**
@@ -573,35 +558,223 @@ Polymer({
    * @returns {Object|null} A type definition or null if not found.
    */
   _findAndAssignType: function(srcArray, index, name) {
-    if (!name) {
+    var type = this._findType(name);
+    if (!type) {
+      return;
+    }
+    if (typeof type.type === 'string') {
+      // parsed already.
+      srcArray[index] = type;
+      return;
+    }
+    var res = this._extractTypeProperties(type);
+    if (res) {
+      type.properties = res;
+      type.type = 'object';
+    }
+    srcArray[index] = type;
+  },
+  /**
+   * Finds a type for given `id`. Returns `undefined` if not found.
+   * If given `id` is an union type then returned value will ba an array of types.
+   */
+  _findType: function(id) {
+    if (!id) {
       return;
     }
     var def = this.raml;
-    if (!def || !def.types) {
+    if (!def || !def.types || !def.types.length) {
       return;
     }
+
+    if (id.indexOf('|') !== -1) {
+      id = id.split('|').map(function(item) {
+        return item.trim();
+      });
+    }
+
+    var isUnion = id instanceof Array;
+    var result = isUnion ? [] : undefined;
+
     for (var i = 0, len = def.types.length; i < len; i++) {
-      var type = def.types[i];
-      var _name = Object.getOwnPropertyNames(type);
-      if (!_name.length) {
+      var typeDef = def.types[i];
+      var typeIds;
+      try {
+        typeIds = Object.keys(typeDef);
+      } catch (e) {
         continue;
       }
-      _name = _name[0];
-      if (_name !== name) {
-        continue;
-      }
-      type = type[name];
-      if (type.type) {
-        this._assignTypes(type.type);
-      }
-      if (type.properties) {
-        for (var property in type.properties) {
-          if (type.properties[property].type) {
-            this._assignTypes(type.properties[property].type);
-          }
+      if (isUnion) {
+        if (id.indexOf(typeIds[0]) === -1) {
+          continue;
+        }
+      } else {
+        if (typeIds[0] !== id) {
+          continue;
         }
       }
-      srcArray[index] = type;
+      if (isUnion) {
+        result[result.length] = typeDef[typeIds[0]];
+      } else {
+        return typeDef[typeIds[0]];
+      }
+    }
+    if (isUnion && result.length) {
+      return result;
+    }
+  },
+  _extractTypeProperties: function(obj) {
+    if (!obj || typeof obj === 'string') {
+      return;
+    }
+    var props = [];
+    var self = this;
+    var _existingPropNames;
+    // Handle basic property declaration.
+    if (typeof obj.type === 'string') {
+      if (this.baseTypes.indexOf(obj.type) !== -1) {
+        obj.type = [obj.type]; // Next check will handle it.
+      }
+    }
+    if (obj.type && obj.type.length && obj.type.length === 1) {
+      if (this.baseTypes.indexOf(obj.type[0]) !== -1) {
+        if (obj.type[0] === 'object') {
+          // return object properties as an Array
+          try {
+            _existingPropNames = Object.keys(obj.properties);
+            _existingPropNames.forEach(function(name) {
+              var prop = self._extractTypeProperties(obj.properties[name]);
+              if (prop) {
+                props = props.concat(prop);
+              } else {
+                if (obj.properties[name].properties instanceof Array) {
+                  props[props.length] = obj.properties[name];
+                }
+              }
+            });
+          } catch (e) {
+            console.warn(e);
+          }
+          return props;
+        }
+        if (obj.type[0] === 'array') {
+          var _type;
+          var __type;
+          if (typeof obj.items === 'string') {
+            _type = this._findType(obj.items);
+            if (_type) {
+              obj.items = _type;
+            }
+          } else {
+            if (obj.items.type instanceof Array && obj.items.type.length === 1) {
+              obj.items.type = obj.items.type[0];
+            }
+            var isArray = obj.items.type instanceof Array;
+            if (isArray && obj.items.type.length > 1) {
+              // Union types for the array items.
+              var _tmp = [];
+              obj.items.type.forEach(function(item) {
+                _type = self._findType(item);
+                if (_type) {
+                  self._extractTypeProperties(_type);
+                  _tmp[_tmp.length] = _type;
+                }
+              });
+              obj.items = _tmp;
+            } else {
+              if (this.baseTypes.indexOf(obj.items.type) === -1) {
+                _type = this._findType(obj.items.type);
+                if (_type) {
+                  __type = self._extractTypeProperties(_type);
+                  if (__type) {
+                    obj.items.properties = _type;
+                  } else {
+                    if (_type.properties) {
+                      obj.items.properties = obj.properties.concat(_type.properties);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        // basic property without extension.
+        obj.type = obj.type[0];
+        return [obj];
+      }
+    }
+
+    if (obj.properties) {
+      try {
+        _existingPropNames = Object.keys(obj.properties);
+        _existingPropNames.forEach(function(name) {
+          var prop = self._extractTypeProperties(obj.properties[name]);
+          if (!prop) {
+            return;
+          }
+          if (prop.length === 1) {
+            props[props.length] = prop[0];
+          } else {
+            props[props.length] = prop;
+          }
+        });
+        obj.properties = props;
+      } catch (e) {
+      }
+    }
+
+    if (obj.type) {
+      obj.properties = obj.properties || [];
+      if (obj.type instanceof Array) {
+        obj.type.forEach(function(type) {
+          if (typeof type === 'string') {
+            if (self.baseTypes.indexOf(type) === -1) {
+              var _type = self._findType(type);
+              if (!_type) {
+                return;
+              } else {
+                type = _type;
+              }
+            }
+          }
+          var prop;
+          // Union type
+          if (type instanceof Array) {
+            var _unionProperties = [];
+            for (var i = 0, len = type.length; i < len; i++) {
+              prop = self._extractTypeProperties(type[i]);
+              if (prop) {
+                type[i].properties = prop;
+                _unionProperties[_unionProperties.length] = type[i];
+              } else {
+                if (type[i].properties) {
+                  _unionProperties[_unionProperties.length] = type[i];
+                }
+              }
+            }
+            obj.properties[obj.properties.length] = {
+              isUnion: true,
+              properties: _unionProperties
+            };
+          } else {
+            prop = self._extractTypeProperties(type);
+            if (prop) {
+              obj.properties = obj.properties.concat(prop);
+            } else {
+              if (type.properties) {
+                obj.properties = obj.properties.concat(type.properties);
+              }
+            }
+          }
+        });
+        obj.type = 'object';
+      } else {
+        var prop = self._extractTypeProperties(obj.type);
+        if (prop) {
+          obj.properties = obj.properties.concat(prop);
+          obj.type = 'object';
+        }
+      }
     }
   }
 });
