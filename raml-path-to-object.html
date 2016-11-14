@@ -396,7 +396,12 @@ Polymer({
         return;
       }
       name = name[0];
-      var schema = ss[name];
+      var schema;
+      if (ss.settings) {
+        schema = ss;
+      } else {
+        schema = ss[name];
+      }
       if (schema.describedBy) {
         if (schema.describedBy.queryParameters) {
           current.queryParameters = Object.assign(current.queryParameters,
@@ -726,6 +731,9 @@ Polymer({
       if (this.baseTypes.indexOf(obj.type[0]) !== -1) {
         if (obj.type[0] === 'object') {
           // return object properties as an Array
+          if (!obj.properties) {
+            return;
+          }
           try {
             _existingPropNames = Object.keys(obj.properties);
             _existingPropNames.forEach(function(name) {
