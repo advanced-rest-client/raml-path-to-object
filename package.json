@@ -1,6 +1,6 @@
 {
   "name": "raml-path-to-object",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "license": "Apache-2.0 OR CC-BY-4.0",
   "description": "Helper element that converts selected path to a RAML definition object",
   "devDependencies": {
