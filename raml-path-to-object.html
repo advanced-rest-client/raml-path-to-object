@@ -817,10 +817,8 @@ Polymer({
                 }
               }
             }
-            obj.properties[obj.properties.length] = {
-              isUnion: true,
-              properties: _unionProperties
-            };
+            obj.isUnion = true;
+            obj.properties = _unionProperties;
           } else {
             prop = self._extractTypeProperties(type);
             if (prop) {
@@ -828,6 +826,9 @@ Polymer({
             } else {
               if (type.properties) {
                 obj.properties = obj.properties.concat(type.properties);
+              }
+              if (type.isUnion) {
+                obj.isUnion = type.isUnion;
               }
             }
           }
