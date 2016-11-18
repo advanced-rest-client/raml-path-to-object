@@ -89,8 +89,19 @@ first element.
 @demo demo/index.html
 @hero hero.svg
 -->
-<script>
 
+<dom-module id="raml-path-to-object">
+  <template>
+    <style>
+    :host {
+      display: none;
+    }
+    </style>
+    <template is="dom-if" if="[[aware]]" restamp="true">
+      <raml-aware raml="{{raml}}" scope="[[aware]]"></raml-aware>
+    </template>
+  </template>
+<script>
 Polymer({
   is: 'raml-path-to-object',
   behaviors: [Polymer.RamlBehavior],
@@ -129,13 +140,61 @@ Polymer({
       value: false,
       notify: true,
       readOnly: true
+    },
+    // Name of the `<raml-aware>` scope, so it will fill the raml property.
+    aware: String,
+    // If true, then it will listen for change events instead using data binding
+    auto: {
+      type: Boolean,
+      value: false,
+      observer: '_autoChanged'
     }
   },
 
   observers: [
     '_ramlChanged(raml.*)',
-    '_pathChanged(selectedPath)'
+    '_pathChanged(selectedPath)',
+    '_fireSelectedObject(selectedObject.*)',
+    '_fireSelectedParent(selectedParent.*)',
+    '_fireIsMethodState(isMethod)',
+    '_fireIsResourceState(isResource)',
+    '_fireIsDocumentationState(isDocumentation)'
   ],
+
+  attached: function() {
+    this._eventTarget = Polymer.dom(this).host || document;
+    this._autoChanged(this.auto);
+  },
+
+  _autoChanged: function(state) {
+    if (state) {
+      this._attacheListeners();
+    } else {
+      this._detachListeners();
+    }
+  },
+
+  _attacheListeners: function() {
+    if (!this._eventTarget) {
+      return;
+    }
+    this._detachListeners();
+    this.listen(this._eventTarget, 'raml-selected-path-changed',
+      '_pathChangeHandler');
+  },
+
+  _detachListeners: function() {
+    if (!this._eventTarget) {
+      return;
+    }
+    this.unlisten(this._eventTarget, 'raml-selected-path-changed',
+      '_pathChangeHandler');
+  },
+
+  _pathChangeHandler: function(e, detail) {
+    this.set('selectedPath', detail.path);
+  },
+
   // Restore properties to the original state
   clear: function() {
     this._setSelectedObject(undefined);
@@ -848,6 +907,37 @@ Polymer({
         }
       }
     }
+  },
+
+  _fireSelectedObject: function() {
+    this.fire('raml-selected-object-changed', {
+      selectedObject: this.selectedObject
+    });
+  },
+
+  _fireSelectedParent: function() {
+    this.fire('raml-selected-parent-changed', {
+      selectedParent: this.selectedParent
+    });
+  },
+
+  _fireIsMethodState: function(isMethod) {
+    this.fire('raml-is-method-changed', {
+      state: isMethod
+    });
+  },
+
+  _fireIsResourceState: function(isResource) {
+    this.fire('raml-is-resource-changed', {
+      state: isResource
+    });
+  },
+
+  _fireIsDocumentationState: function(isDocumentation) {
+    this.fire('raml-is-documentation-changed', {
+      state: isDocumentation
+    });
   }
 });
 </script>
+</dom-module>
