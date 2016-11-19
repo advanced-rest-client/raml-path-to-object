@@ -1,11 +1,6 @@
 {
   "verbose": false,
   "plugins": {
-    "local": {
-      "browsers": [
-        "firefox", "chrome"
-      ]
-    },
     "sauce": {
       "disabled": true,
       "browsers": [{
