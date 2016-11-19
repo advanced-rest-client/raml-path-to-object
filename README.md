@@ -3,6 +3,9 @@
 # raml-path-to-object
 
 `<raml-path-to-object>`
+
+test
+
 Helper element that converts selected path to a RAML definition object.
 It also fill up `selectedObject` with additional properties to match internall data model
 so this element must always be used whem displaying documentation using ARC's set of elements.
