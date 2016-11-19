@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/advanced-rest-client/raml-path-to-object.svg?branch=master)](https://travis-ci.org/advanced-rest-client/raml-path-to-object)  [![Dependency Status](https://dependencyci.com/github/advanced-rest-client/raml-path-to-object/badge)](https://dependencyci.com/github/advanced-rest-client/raml-path-to-object)  
+
+# raml-path-to-object
 
 `<raml-path-to-object>`
 Helper element that converts selected path to a RAML definition object.
