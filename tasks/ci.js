@@ -21,7 +21,8 @@ const payload = {
   'commit': process.env.TRAVIS_COMMIT || 'test',
   'jobNumber': process.env.TRAVIS_JOB_NUMBER || 'dev',
   'pullRequest': process.env.TRAVIS_PULL_REQUEST || false,
-  'pullRequestSha': process.env.TRAVIS_PULL_REQUEST_SHA || 'none'
+  'pullRequestSha': process.env.TRAVIS_PULL_REQUEST_SHA || 'none',
+  'slug': process.env.TRAVIS_REPO_SLUG || 'unknown'
 };
 
 var req = http.request(options, (res) => {
