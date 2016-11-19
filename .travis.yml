@@ -3,19 +3,23 @@ sudo: required
 dist: trusty
 node_js: stable
 before_script:
-- npm install -g bower polylint web-component-tester
-- bower install
+- npm install --silent -g bower polymer-cli
+- bower install --silent
 addons:
-  firefox: '46.0'
-  apt:
-    sources:
-    - google-chrome
-    packages:
-    - google-chrome-stable
   sauce_connect: true
 script:
-- polylint
-- xvfb-run wct
+- polymer lint raml-path-to-object.html
+- polymer test --plugin local
+- polymer test --plugin sauce --job-name "raml-path-to-object:${TRAVIS_BRANCH}" --build-number=${TRAVIS_BUILD_NUMBER}
 cache:
   directories:
   - bower_components
+  - node_modules
+branches:
+  only:
+    - stage
+    - develop
+env:
+  global:
+  - secure: l/L2SgoOfbdXUEppyNynPNOU8l1Z4nVeKQHFpRUvLS+0wxSGv1JkqJn8f2u0QahijNwZqE00mYWr01mWF2QcUg5ANC7wxEL6nPgFSB3b1zfzA/EkGLKcFm0nHucGS4mw7ViPcS6+8GXIspSCsiGlfNXLjOouepTO4jhJ0bsiBipQMlii5nYCdrfsKPhdEp1BUxx2LQbdpVc7dX8w8ngZHsLnUH+XCksxDkSJoKz5/pXUxQKPXzpLgGNgEvaO9hJp/Rmr39S2GIzJ7XXSYoiR9l/FUgBByjkXrwuLCkvod5yN+mK6B+mBiXZB1bxG5m4OAkkSpf93EnIt8tTeOLnaBrqiONTG19/0AvTfle3prF8b0oUmFO6U3mixSjOyNuoZX1Q0BKP5pWErGcMJmT4sx3LicwH23STSRb2E4lHsecLZwVjacX/5jerNm+lI8qGxt6EqOjb8Jjd1n1l7EX4MFblP/1+h89+o/02nyMKhbVAUwzxkEY7Pli9M8HtSZg9/bIiNPkp7HTGPUN5gShvgsIV1xo/ujwg8WyRgKTt6gAW4ovpT3NbMRL+k0JzDTLtxcQea8fWtt3XuTjp83AOKrNUQI21AALta0n9Ee3YSpqlT5ESMZDZ1lRcHiQORawyf9XjiIh3mwL7Ce1heJWpy3l+2Xy69tpxUSAXtiPSeRuo=
+  - secure: JMWgz3hreMx1X/ZNR2hwKe5Xzhb17c9T24HdJgzaE9/R1h182k6hsh2eMFVZADNTULnew/zM+QYEUopwn7sGEYrZmzkgmuOAvsIYwnHMt+aiC0JrA2TFDxswLpjDUIgLKJKazG2+w2hzFQgh7mMRZEAGt/cLHZTEPF6T8hDT6Kt+k4318XCc3hNstU0O1dUVb5Mcz4FJXrRpSOR/soeK82TY3y5jx4bVJixN0dTEIdxKw9HWA/KVZ0ffSJe1gPVpD7dlhGIEwSGfVGk4M9A9viqUCEQ66a5i8N9xSRBIgS6aml320CgN4/KETweRheG78HNDAKyZl+tXpgU8Hbhx51E/TNBXIRhAGr7Ne2BSGQnDDhnZWegzAf54KbuWWOWUt9pD7HqmRC4xp2rzvvGrowEH8MVhWjMiZwi9qivOJGWL5juFcGQaO6Z6jwDMPsQ4RP0YYbl39NowsLo1kf9CGUK0g/S36UQbJ+QLzC4v89tKcqggV7SjliZyEIk6UPFehdB+omDbPTx8UtqK6RjDlYwW+BNL8w+Lmp5NPiU7775p14VlzsW5KNUFr4t0x5J9zCpBZZFN9syoIKZ2AsrXLweLoN1b8vPSFbc053Z5hkHPN2i97VdbOxQmX7H7Y1vIW4XT2Xkv68g6bpM4d2EfYZCixVYiZVHhzf7nBU/NpVA=
