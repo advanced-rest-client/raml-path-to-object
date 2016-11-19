@@ -15,6 +15,7 @@ const options = {
     'content-type': 'application/json'
   }
 };
+
 const payload = {
   'branch': process.env.TRAVIS_BRANCH || 'stage',
   'buildNumber': process.env.TRAVIS_BUILD_NUMBER || 'dev',
