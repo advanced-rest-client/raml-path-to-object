@@ -1,3 +1,53 @@
+<a name="1.0.21"></a>
+## [1.0.21](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.21) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
+<a name="1.0.20"></a>
+## [1.0.20](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.20) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
+<a name="1.0.19"></a>
+## [1.0.19](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.19) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
+<a name="1.0.18"></a>
+## [1.0.18](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.18) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
+<a name="1.0.17"></a>
+## [1.0.17](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.17) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
 <a name="1.0.16"></a>
 ## [1.0.16](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.16) (2016-11-19)
 
