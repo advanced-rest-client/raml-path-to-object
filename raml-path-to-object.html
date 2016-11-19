@@ -13,27 +13,95 @@ the License.
 -->
 <link rel="import" href="../polymer/polymer.html">
 <link rel="import" href="../raml-behaviors/raml-behavior.html">
+<link rel="import" href="../raml-aware/raml-aware.html">
 <!--
 `<raml-path-to-object>`
 Helper element that converts selected path to a RAML definition object.
+It also fill up `selectedObject` with additional properties to match internall data model
+so this element must always be used whem displaying documentation using ARC's set of elements.
 
+RAML's JS parser don't add definitions for traits or security schemes to resources or
+methods. This element will look for the definition in source RAML and assign this definitions
+to the `selectedObject`.
 
-### Example
+To ilustrate, parser's JSON output for a method would be:
+```
+{
+  "method": "get",
+  "is": {
+    Paginated: {
+      "resourceType": "..."
+    }
+  },
+  "securedBy": [
+    "oauth_2_0"
+  ]
+}
+```
+But after using this element it would be:
+```
+{
+  "method": "get",
+  "is": [{
+    "name": "Paginated",
+    "description": "...",
+    ...
+  }],
+  "securedBy": [{
+    "describedBy": {...},
+    "settings": {...},
+    "name": "oauth_2_0"
+  }]
+}
+```
+
+Full list of affected properties:
+- is - replaced IDs with object definition
+- securedBy - replaced IDs with object definition
+- queryParameters - computed all possible params from all parent resources, traits ans security schemas
+- headers - computed all possible headers from all parent resources, traits ans security schemas
+- uriParameters - computed all possible params from all parent resources, traits ans security schemas
+- responses - computed all possible responses from all parent resources, traits ans security schemas
+- fullUrl - a full URL for given resource / method
+
+### Usage
 ```
 <raml-path-selector raml="[[raml]]" selected-path="{{selectedPath}}"></raml-path-selector>
 <raml-path-to-object
   raml="[[raml]]"
   selected-path="{{selectedPath}}"
   selected-object="{{selectedObject}}"
-  is-selected-method="{{isSelectedMethod}}"
-  is-selected-resource="{{isSelectedResource}}"
-  is-selected-documentation="{{isSelectedDocumentation}}"></raml-path-to-object>
+  is-method="{{isMethod}}"
+  is-resource="{{isResource}}"
+  is-documentation="{{isDocumentation}}"></raml-path-to-object>
 ```
+
+### The path
+Path is the JSON path to the value in the JSON structure. It is a string that contains structure
+information to get a value. For example:
+```
+resources.1.methods.0
+```
+means that the path to the value is through resources array, 2nd element, then methods array
+first element.
 
 @group RAML Elements
 @element raml-path-to-object
 @demo demo/index.html
+@hero hero.svg
 -->
+
+<dom-module id="raml-path-to-object">
+  <template>
+    <style>
+    :host {
+      display: none;
+    }
+    </style>
+    <template is="dom-if" if="[[aware]]" restamp="true">
+      <raml-aware raml="{{raml}}" scope="[[aware]]"></raml-aware>
+    </template>
+  </template>
 <script>
 Polymer({
   is: 'raml-path-to-object',
@@ -47,50 +115,108 @@ Polymer({
       notify: true,
       readOnly: true
     },
+    // Parent of the selected object (if any is possible)
+    selectedParent: {
+      type: Object,
+      notify: true,
+      readOnly: true
+    },
     // True if the selected object is a method definition
-    isSelectedMethod: {
+    isMethod: {
       type: Boolean,
       value: false,
       notify: true,
       readOnly: true
     },
     // True if the selected object is a resource definition
-    isSelectedResource: {
+    isResource: {
       type: Boolean,
       value: false,
       notify: true,
       readOnly: true
     },
     // True if the selected object is a documentation definition
-    isSelectedDocumentation: {
+    isDocumentation: {
       type: Boolean,
       value: false,
       notify: true,
       readOnly: true
+    },
+    // Name of the `<raml-aware>` scope, so it will fill the raml property.
+    aware: String,
+    // If true, then it will listen for change events instead using data binding
+    auto: {
+      type: Boolean,
+      value: false,
+      observer: '_autoChanged'
     }
   },
 
   observers: [
-    '_pathChanged(selectedPath, raml.*)'
+    '_ramlChanged(raml.*)',
+    '_pathChanged(selectedPath)',
+    '_fireSelectedObject(selectedObject.*)',
+    '_fireSelectedParent(selectedParent.*)',
+    '_fireIsMethodState(isMethod)',
+    '_fireIsResourceState(isResource)',
+    '_fireIsDocumentationState(isDocumentation)'
   ],
+
+  attached: function() {
+    this._eventTarget = Polymer.dom(this).host || document;
+    this._autoChanged(this.auto);
+  },
+
+  _autoChanged: function(state) {
+    if (state) {
+      this._attacheListeners();
+    } else {
+      this._detachListeners();
+    }
+  },
+
+  _attacheListeners: function() {
+    if (!this._eventTarget) {
+      return;
+    }
+    this._detachListeners();
+    this.listen(this._eventTarget, 'raml-selected-path-changed',
+      '_pathChangeHandler');
+  },
+
+  _detachListeners: function() {
+    if (!this._eventTarget) {
+      return;
+    }
+    this.unlisten(this._eventTarget, 'raml-selected-path-changed',
+      '_pathChangeHandler');
+  },
+
+  _pathChangeHandler: function(e, detail) {
+    this.set('selectedPath', detail.path);
+  },
+
   // Restore properties to the original state
   clear: function() {
     this._setSelectedObject(undefined);
-    this._setIsSelectedMethod(false);
-    this._setIsSelectedResource(false);
-    this._setIsSelectedDocumentation(false);
+    this._setIsMethod(false);
+    this._setIsResource(false);
+    this._setIsDocumentation(false);
   },
-
+  _ramlChanged: function() {
+    this.clear();
+  },
   _pathChanged: function(path) {
     if (!this.raml || !path) {
       return this.clear();
     }
-    var obj = this.get('raml.' + path);
+    this._analysePath(path);
+    var obj = this._computeObject(path);
     if (!obj) {
       return this.clear();
     }
     this._setSelectedObject(obj);
-    this._analysePath(path);
+    this._selectParent(path);
   },
 
   _analysePath: function(path) {
@@ -99,23 +225,720 @@ Polymer({
     var type = parts.pop();
     switch (type) {
       case 'resources':
-        this._setIsSelectedMethod(false);
-        this._setIsSelectedResource(true);
-        this._setIsSelectedDocumentation(false);
+        this._setIsMethod(false);
+        this._setIsResource(true);
+        this._setIsDocumentation(false);
         break;
       case 'methods':
-        this._setIsSelectedMethod(true);
-        this._setIsSelectedResource(false);
-        this._setIsSelectedDocumentation(false);
+        this._setIsMethod(true);
+        this._setIsResource(false);
+        this._setIsDocumentation(false);
         break;
       case 'documentation':
-        this._setIsSelectedMethod(false);
-        this._setIsSelectedResource(false);
-        this._setIsSelectedDocumentation(true);
+        this._setIsMethod(false);
+        this._setIsResource(false);
+        this._setIsDocumentation(true);
         break;
       default:
         return this.clear();
     }
+  },
+
+  _selectParent: function(path) {
+    if (!(this.isMethod || this.isResource)) {
+      // No parent.
+      return this._setSelectedParent(undefined);
+    }
+    var parts = path.split('.');
+    parts.splice(parts.length - 2, 2);
+    var parentPath = parts.join('.');
+    if (!parentPath) {
+      return this._setSelectedParent(undefined);
+    }
+    var obj = this.get('raml.' + parentPath);
+    if (!obj) {
+      return this._setSelectedParent(undefined);
+    }
+    this._setSelectedParent(obj);
+  },
+  /**
+   * Inserts dependencies definitions to current node.
+   * It will update query parameters, uri parameters, security schemas etc with it's definitions.
+   *
+   * As a result, instead of array of ID's in the `is` property, full definition of trait will
+   * be inserted. `uriParameters` will be added as a `uriParameters` property. Ans so on.
+   *
+   * This function must be called after type of object has been determined.
+   * @param {String} path A path to the object.
+   */
+  _computeObject: function(path) {
+    if (this.isDocumentation) {
+      // No dependencies here
+      return this.get('raml.' + path);
+    }
+    var raml = this.raml;
+    var url = raml.baseUri;
+    var current = raml;
+    var parts = path.split('.');
+
+    var traits = [];
+    var securitySchemes = [];
+    var uriParameters = raml.baseUriParameters || {};
+
+    var processedSecuritySchemas = [];
+
+    for (var i = 0, len = parts.length; i < len; i++) {
+      if (!current) {
+        break;
+      }
+      var segment = parts[i];
+      if (segment === 'resources') {
+        // Entering resources array
+        current = current.resources;
+        continue;
+      } else if (segment === 'methods') {
+        current = current.methods;
+        // Entering methods array
+        continue;
+      }
+      // If it's not an endpoint or method keywork then it must be a number.
+      var n = Number(segment);
+      if (n !== n) {
+        console.warn('Unknown segment ' + segment + ' in path ' + parts.join('.'));
+        break;
+      }
+      current = current[n];
+      if (!current) {
+        continue;
+      }
+      if (current.relativeUri) {
+        url += current.relativeUri;
+      }
+      if (current.uriParameters) {
+        uriParameters = Object.assign(uriParameters, current.uriParameters);
+      }
+      // looking for traits
+      if (current.is && current.is.length) {
+        for (var j = 0, lenT = current.is.length; j < lenT; j++) {
+          var t = this._findTrait(current.is[j]);
+          if (t) {
+            traits[traits.length] = t;
+          }
+        }
+      }
+      // looking for security schemes
+      if (current.securedBy && current.securedBy.length) {
+        for (var k = 0, lenS = current.securedBy.length; k < lenS; k++) {
+          var s = this._findSecurityScheme(current.securedBy[k]);
+          if (s) {
+            if (processedSecuritySchemas.indexOf(s.name) === -1) {
+              securitySchemes[securitySchemes.length] = s;
+              processedSecuritySchemas[processedSecuritySchemas.length] = s.name;
+            }
+          }
+        }
+      }
+    }
+    this._processParameters(current, traits, securitySchemes);
+    current.securedBy = securitySchemes;
+    current.is = traits;
+    this._processTypes(current);
+    url = url.replace(/\/\//g, '/');
+    current.fullUrl = url;
+    current.uriParameters = uriParameters;
+    return current;
+  },
+  /**
+   * Finds a trait of given `name`
+   *
+   * @param {String} id Trait name to look for
+   * @returns {Object|null} Trait or null if not found.
+   */
+  _findTrait: function(id) {
+    if (typeof id !== 'string') {
+      var _name = Object.getOwnPropertyNames(id);
+      if (!_name.length) {
+        return null;
+      }
+      id = _name[0];
+    }
+    var d = this.raml;
+    if (!d || !d.traits || !d.traits.length) {
+      return null;
+    }
+    var t = d.traits;
+    for (var i = 0, len = t.length; i < len; i++) {
+      var trait = t[i];
+      var name = Object.getOwnPropertyNames(trait);
+      if (!name.length) {
+        continue;
+      }
+      name = name[0];
+      if (name === id) {
+        return trait[name];
+      }
+    }
+    return null;
+  },
+  /**
+   * Finds a security schema for given `id`
+   *
+   * @param {String} id The id of the security scheme
+   * @returns {Object|null} Security scheme or null if not found.
+   */
+  _findSecurityScheme: function(id) {
+    if (typeof id !== 'string') {
+      // parser added the definition already
+      return id;
+    }
+    var d = this.raml;
+    if (!d || !d.securitySchemes || !d.securitySchemes.length) {
+      return null;
+    }
+    var s = d.securitySchemes;
+    for (var i = 0, len = s.length; i < len; i++) {
+      var scheme = s[i];
+      var name = Object.getOwnPropertyNames(scheme);
+      if (!name.length) {
+        continue;
+      }
+      name = name[0];
+      if (name === id) {
+        return scheme[name];
+      }
+    }
+    return null;
+  },
+  /**
+   * Extracts Query parameters, Headers, Responses and bodies from current object, traits
+   * and security schemes amd sets the value of computation (map of corresponding objects) into the
+   * `objects`'s properties
+   *
+   * @param {Object} current Currently processed object
+   * @param {Array} traits List of traits to process
+   * @param {Array} securitySchemes List of security schemes to process
+   */
+  _processParameters: function(current, traits, securitySchemes) {
+    if (!current.queryParameters) {
+      current.queryParameters = {};
+    }
+    if (!current.headers) {
+      current.headers = {};
+    }
+    var responses = [];
+    traits.forEach(function(trait) {
+      var name = Object.getOwnPropertyNames(trait);
+      if (!name.length) {
+        return;
+      }
+      name = name[0];
+      var data = trait[name];
+      if (data.queryParameters) {
+        current.queryParameters = Object.assign(current.queryParameters, data.queryParameters);
+      }
+      if (data.headers) {
+        current.headers = Object.assign(current.headers, data.headers);
+      }
+      if (data.responses) {
+        if (data.responses instanceof Array) {
+          responses = responses.concat(data.responses);
+        } else {
+          for (var code in data.responses) {
+            responses[responses.length] = data.responses[code];
+          }
+        }
+      }
+    });
+    securitySchemes.forEach(function(ss) {
+      var name = Object.getOwnPropertyNames(ss);
+      if (!name.length) {
+        return;
+      }
+      name = name[0];
+      var schema;
+      if (ss.settings) {
+        schema = ss;
+      } else {
+        schema = ss[name];
+      }
+      if (schema.describedBy) {
+        if (schema.describedBy.queryParameters) {
+          current.queryParameters = Object.assign(current.queryParameters,
+            schema.describedBy.queryParameters);
+        }
+        if (schema.describedBy.headers) {
+          current.headers = Object.assign(current.headers,
+            schema.describedBy.headers);
+        }
+        if (schema.describedBy.responses) {
+          responses = responses.concat(schema.describedBy.responses);
+        }
+      }
+    });
+    if (current.responses) {
+      if (current.responses instanceof Array) {
+        responses = responses.concat(current.responses);
+      } else {
+        for (var code in current.responses) {
+          responses[responses.length] = current.responses[code];
+        }
+      }
+    }
+    responses.sort(function(a, b) {
+      var aCode = Number(a.code);
+      var bCode = Number(b.code);
+      if (aCode > bCode) {
+        return 1;
+      }
+      if (aCode < bCode) {
+        return -1;
+      }
+      return 0;
+    });
+    current.responses = responses;
+  },
+
+  _processTypes: function(obj) {
+    this.__processBody(obj);
+    this.__processBodyMethods(obj);
+    this.__processBodyResponses(obj);
+    this.__processBodyResources(obj);
+  },
+
+  __processBodyMethods: function(obj) {
+    if (!obj || !obj.methods || !obj.methods.length) {
+      return;
+    }
+    for (var i = 0, len = obj.methods.length; i < len; i++) {
+      this._processTypes(obj.methods[i]);
+    }
+  },
+
+  __processBodyResponses: function(obj) {
+    if (!obj || !obj.responses) {
+      return;
+    }
+    if (!(obj.responses instanceof Object)) {
+      return;
+    }
+    var names;
+    try {
+      names = Object.keys(obj.responses); //ES5 can thow error
+    } catch (e) {
+      return;
+    }
+    if (!names.length) {
+      return;
+    }
+    for (var i = 0, len = names.length; i < len; i++) {
+      this._processTypes(obj.responses[names[i]]);
+    }
+  },
+
+  __processBodyResources: function(obj) {
+    if (!obj || !obj.resources || !obj.resources.length) {
+      return;
+    }
+    for (var i = 0, len = obj.resources.length; i < len; i++) {
+      this._processTypes(obj.resources[i]);
+    }
+  },
+
+  __processBody: function(obj) {
+    if (!obj.body) {
+      return;
+    }
+    var mimes;
+    try {
+      mimes = Object.keys(obj.body); //ES5 can thow error
+    } catch (e) {
+      return;
+    }
+    if (!mimes.length) {
+      return;
+    }
+
+    var self = this;
+    mimes.forEach(function(mime) {
+      if (!obj.body[mime].type || mime !== 'application/json') {
+        return;
+      }
+      self._assignTypes(obj.body[mime].type, obj.body[mime]);
+      if (!(obj.body[mime].properties instanceof Array)) {
+        self._fillMissingProperties(obj.body[mime]);
+      }
+      var generatedType = obj.body[mime].type;
+
+      if (generatedType && typeof generatedType !== 'string' && generatedType.length) {
+        // Can be only one type here, even if this is union type.
+        var _computedType = generatedType[0];
+        if (_computedType.properties) {
+          obj.body[mime].properties = _computedType.properties;
+        }
+        if (_computedType.originalType) {
+          obj.body[mime].originalType = _computedType.originalType;
+        } else if (_computedType.name) {
+          obj.body[mime].originalType = _computedType.name;
+        }
+        obj.body[mime].type = 'object';
+      }
+    });
+  },
+
+  _fillMissingProperties: function(obj) {
+    if (typeof obj.type === 'string') {
+      if (obj.type === 'array') {
+        return;
+      }
+    }
+    if (!(obj.type[0].properties && obj.type[0].properties instanceof Array)) {
+      // hasn't been processed properly.
+      var res = this._extractTypeProperties(obj);
+      if (res) {
+        obj.properties = res;
+        obj.type = 'object';
+      }
+    }
+  },
+
+  _assignTypes: function(types, obj) {
+    var counter = 0;
+    var _res;
+    this._cached = this._cached || {};
+    if (typeof types === 'string') {
+      return;
+    }
+    for (var i = 0, len = types.length; i < len; i++) {
+      var typeName = types[i];
+      if (!typeName || typeof typeName !== 'string') {
+        continue;
+      }
+      if (this.baseTypes.indexOf(typeName) !== -1) {
+        //one of the base types
+        if (typeName === 'array') {
+          if (typeof obj.items === 'string') {
+            if (this.baseTypes.indexOf(obj.items) !== -1) {
+              continue;
+            }
+            if (this._cached[obj.items]) {
+              _res = this._cached[obj.items];
+            } else {
+              _res = this._findAndAssignType(obj.items);
+              this._cached[obj.items] = _res;
+            }
+            if (!_res) {
+              continue;
+            }
+            obj.items = _res;
+          }
+          obj.type = 'array';
+          return;
+        } else if (typeName === 'object') {
+          var res = this._extractTypeProperties(obj);
+          if (res) {
+            obj.properties = res;
+            obj.type = 'object';
+          }
+          return;
+        }
+        obj.type = typeName;
+        return;
+      }
+      // Union type
+      if (typeName.indexOf('|') !== -1) {
+        var namesList = typeName.split('|').map(function(item) {
+          return item.trim();
+        });
+        for (var j = 0, jLen = namesList.length; j < jLen; j++) {
+
+          if (this._cached[namesList[j]]) {
+            _res = this._cached[namesList[j]];
+          } else {
+            _res = this._findAndAssignType(namesList[j]);
+            this._cached[typeName] = _res;
+          }
+
+          if (_res) {
+            types[counter] = _res;
+          }
+          counter++;
+        }
+      } else {
+        if (this._cached[typeName]) {
+          _res = this._cached[typeName];
+        } else {
+          _res = this._findAndAssignType(typeName);
+          this._cached[typeName] = _res;
+        }
+        if (_res) {
+          types[counter] = _res;
+        }
+        counter++;
+      }
+    }
+  },
+  /**
+   * Finds a type definition for given name.
+   *
+   * @param {Object} src A source object to which the value will be assigned to if found.
+   * It is required for recursive strategy when looking for a sub-types of a type
+   * @param {String} name Type name for find
+   * @returns {Object|null} A type definition or null if not found.
+   */
+  _findAndAssignType: function(name) {
+    var type = this._findType(name);
+    if (!type) {
+      return;
+    }
+    if (typeof type.type === 'string') {
+      // parsed already.
+      return type;
+    }
+    if (type instanceof Array) {
+      var extractedTypes = [];
+      var self = this;
+      type.forEach(function(_type) {
+        var res = self._extractTypeProperties(_type);
+        if (res) {
+          _type.properties = res;
+          if (_type.name) {
+            _type.originalType = type.name;
+          }
+          _type.type = 'object';
+        }
+        extractedTypes[extractedTypes.length] = _type;
+      });
+      // srcArray[index] = extractedTypes;
+      type = extractedTypes;
+    } else {
+      var res = this._extractTypeProperties(type);
+      if (res) {
+        type.properties = res;
+        if (type.name) {
+          type.originalType = type.name;
+        }
+        type.type = 'object';
+      }
+      // srcArray[index] = type;
+    }
+    return type;
+  },
+  /**
+   * Finds a type for given `id`. Returns `undefined` if not found.
+   * If given `id` is an union type then returned value will ba an array of types.
+   */
+  _findType: function(id) {
+    if (!id) {
+      return;
+    }
+    var def = this.raml;
+    if (!def || !def.types || !def.types.length) {
+      return;
+    }
+
+    if (id.indexOf('|') !== -1) {
+      id = id.split('|').map(function(item) {
+        return item.trim();
+      });
+    }
+
+    var isUnion = id instanceof Array;
+    var result = isUnion ? [] : undefined;
+
+    for (var i = 0, len = def.types.length; i < len; i++) {
+      var typeDef = def.types[i];
+      var typeIds;
+      try {
+        typeIds = Object.keys(typeDef);
+      } catch (e) {
+        continue;
+      }
+      if (isUnion) {
+        if (id.indexOf(typeIds[0]) === -1) {
+          continue;
+        }
+      } else {
+        if (typeIds[0] !== id) {
+          continue;
+        }
+      }
+      if (isUnion) {
+        result[result.length] = typeDef[typeIds[0]];
+      } else {
+        return typeDef[typeIds[0]];
+      }
+    }
+    if (isUnion && result.length) {
+      return result;
+    }
+  },
+
+  _extractTypeProperties: function(obj) {
+    if (!obj || typeof obj === 'string') {
+      return;
+    }
+    var props = [];
+    var self = this;
+    var _existingPropNames;
+    // Handle basic property declaration.
+    if (typeof obj.type === 'string') {
+      if (this.baseTypes.indexOf(obj.type) !== -1) {
+        obj.type = [obj.type]; // Next check will handle it.
+      }
+    }
+    if (obj.type && obj.type.length && obj.type.length === 1) {
+      if (this.baseTypes.indexOf(obj.type[0]) !== -1) {
+        if (obj.type[0] === 'object') {
+          // return object properties as an Array
+          if (!obj.properties) {
+            return;
+          }
+          try {
+            _existingPropNames = Object.keys(obj.properties);
+            _existingPropNames.forEach(function(name) {
+              var prop = self._extractTypeProperties(obj.properties[name]);
+              if (prop) {
+                props = props.concat(prop);
+              } else {
+                if (obj.properties[name].properties instanceof Array) {
+                  props[props.length] = obj.properties[name];
+                }
+              }
+            });
+          } catch (e) {
+            console.warn(e);
+          }
+          return props;
+        }
+        if (obj.type[0] === 'array') {
+          if (typeof obj.items === 'string') {
+            obj.items = [obj.items];
+          } else if (obj.items.type) {
+            //it's an array definition
+            this._assignTypes(obj.items.type, obj.items);
+          }
+          this._assignTypes(obj.items, obj);
+        }
+        // basic property without extension.
+        obj.type = obj.type[0];
+        return [obj];
+      }
+    }
+
+    if (obj.properties) {
+      try {
+        _existingPropNames = Object.keys(obj.properties);
+        _existingPropNames.forEach(function(name) {
+          var prop = self._extractTypeProperties(obj.properties[name]);
+          if (!prop) {
+            return;
+          }
+          if (prop.length === 1) {
+            props[props.length] = prop[0];
+          } else {
+            // embeded object
+            obj.properties[name].properties = prop;
+            obj.properties[name].type = obj.properties[name].type[0];
+            props[props.length] = obj.properties[name];
+          }
+        });
+        obj.properties = props;
+      } catch (e) {
+      }
+    }
+
+    if (obj.type) {
+      obj.properties = obj.properties || [];
+      if (obj.type instanceof Array) {
+        obj.type.forEach(function(type) {
+          if (typeof type === 'string') {
+            if (self.baseTypes.indexOf(type) === -1) {
+              var _type = self._findType(type);
+              if (!_type) {
+                return;
+              } else {
+                type = _type;
+              }
+            }
+          }
+          var prop;
+          // Union type
+          if (type instanceof Array) {
+            var _unionProperties = [];
+            for (var i = 0, len = type.length; i < len; i++) {
+              prop = self._extractTypeProperties(type[i]);
+              if (prop) {
+                type[i].properties = prop;
+                _unionProperties[_unionProperties.length] = type[i];
+              } else {
+                if (type[i].properties) {
+                  _unionProperties[_unionProperties.length] = type[i];
+                }
+              }
+            }
+            obj.isUnion = true;
+            obj.properties = _unionProperties;
+          } else {
+            prop = self._extractTypeProperties(type);
+            if (prop) {
+              obj.properties = obj.properties.concat(prop);
+            } else {
+              if (type.properties) {
+                obj.properties = obj.properties.concat(type.properties);
+              }
+              if (type.isUnion) {
+                obj.isUnion = type.isUnion;
+              }
+            }
+          }
+        });
+        var currentType = obj.type[0];
+        if (typeof currentType === 'string') {
+          obj.originalType = currentType;
+        } else if (currentType && currentType.name) {
+          obj.originalType = currentType.name;
+        }
+        obj.type = 'object';
+      } else {
+        var prop = self._extractTypeProperties(obj.type);
+        if (prop) {
+          obj.properties = obj.properties.concat(prop);
+          obj.type = 'object';
+          obj.originalType = obj.name;
+        }
+      }
+    }
+  },
+
+  _fireSelectedObject: function() {
+    this.fire('raml-selected-object-changed', {
+      selectedObject: this.selectedObject
+    });
+  },
+
+  _fireSelectedParent: function() {
+    this.fire('raml-selected-parent-changed', {
+      selectedParent: this.selectedParent
+    });
+  },
+
+  _fireIsMethodState: function(isMethod) {
+    this.fire('raml-is-method-changed', {
+      state: isMethod
+    });
+  },
+
+  _fireIsResourceState: function(isResource) {
+    this.fire('raml-is-resource-changed', {
+      state: isResource
+    });
+  },
+
+  _fireIsDocumentationState: function(isDocumentation) {
+    this.fire('raml-is-documentation-changed', {
+      state: isDocumentation
+    });
   }
 });
 </script>
+</dom-module>

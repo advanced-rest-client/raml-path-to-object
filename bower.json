@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "polymer": "Polymer/polymer#^1.0.0",
-    "raml-behaviors": "advanced-rest-client/raml-behaviors#^1.0.1"
+    "raml-behaviors": "advanced-rest-client/raml-behaviors#^1.0.1",
+    "raml-aware": "advanced-rest-client/raml-aware#^1.0.2"
   },
   "devDependencies": {
     "iron-component-page": "polymerelements/iron-component-page#1.0.0",
@@ -39,5 +40,5 @@
     "test",
     "tasks"
   ],
-  "version": "0.0.1"
+  "version": "1.0.15"
 }
