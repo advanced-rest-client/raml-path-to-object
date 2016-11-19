@@ -1,3 +1,13 @@
+<a name="1.0.14"></a>
+## [1.0.14](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.13...v1.0.14) (2016-11-19)
+
+
+### Fix
+
+* Fixed error - raml-aware wasn't included into the import list ([5632a61de33789d81a65a3d04327e3bb71fb0f0b](https://github.com/advanced-rest-client/raml-path-to-object/commit/5632a61de33789d81a65a3d04327e3bb71fb0f0b))
+
+
+
 <a name="1.0.13"></a>
 ## [1.0.13](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.12...v1.0.13) (2016-11-18)
 
