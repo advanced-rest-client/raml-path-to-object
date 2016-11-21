@@ -27,5 +27,5 @@
     "raml-docs-helpers": "advanced-rest-client/raml-docs-helpers#^1.0.1"
   },
   "ignore": ["**/.*", "node_modules", "bower_components", "test", "tasks"],
-  "version": "1.0.26"
+  "version": "1.0.27"
 }
