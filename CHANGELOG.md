@@ -1,3 +1,13 @@
+<a name="1.0.31"></a>
+## [1.0.31](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.30...v1.0.31) (2016-12-05)
+
+
+### Update
+
+* Added new Travis configuration ([8b589129d418ccc33fba271217ff45bc41bfe4d9](https://github.com/advanced-rest-client/raml-path-to-object/commit/8b589129d418ccc33fba271217ff45bc41bfe4d9))
+
+
+
 <a name="1.0.30"></a>
 ## [1.0.30](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.29...v1.0.30) (2016-12-05)
 
