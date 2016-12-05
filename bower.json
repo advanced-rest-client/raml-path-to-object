@@ -24,8 +24,8 @@
     "test-fixture": "PolymerElements/test-fixture#^1.0.0",
     "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0",
     "raml-path-selector": "advanced-rest-client/raml-path-selector#^1.0.0",
-    "raml-docs-helpers": "advanced-rest-client/raml-docs-helpers#^1.0.1"
+    "arc-demo-helpers": "advanced-rest-client/arc-demo-helpers#^1.0.4"
   },
   "ignore": ["**/.*", "node_modules", "bower_components", "test", "tasks"],
-  "version": "1.0.27"
+  "version": "1.1.27"
 }

@@ -17,7 +17,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
   <title>raml-path-to-object demo</title>
   <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
   <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
-  <link rel="import" href="../../raml-docs-helpers/raml-docs-parser.html">
+  <link rel="import" href="../../arc-demo-helpers/raml-demo-parser.html">
   <link rel="import" href="../../raml-path-selector/raml-path-selector.html">
   <link rel="import" href="../raml-path-to-object.html">
   <style is="custom-style" include="demo-pages-shared-styles">
@@ -41,9 +41,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <body unresolved>
   <template is="dom-bind" id="app">
     <div class="vertical-section-container centered">
-      <raml-docs-parser raml="{{raml}}"></raml-docs-parser>
+      <raml-demo-parser raml="{{raml}}" raml-file-url="https://raw.githubusercontent.com/advanced-rest-client/raml-example-api/master/api.raml"></raml-demo-parser>
       <raml-path-to-object
-        raml="[[raml.specification]]"
+        raml="[[raml]]"
         selected-path="{{selectedPath}}"
         selected-object="{{selectedObject}}"
         selected-parent="{{selectedParent}}"
@@ -52,7 +52,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         is-documentation="{{isDocumentation}}"></raml-path-to-object>
       <h3>The `raml-path-to-object`</h3>
       <div class="content">
-        <raml-path-selector raml="[[raml.specification]]" selected-path="{{selectedPath}}"></raml-path-selector>
+        <raml-path-selector raml="[[raml]]" selected-path="{{selectedPath}}"></raml-path-selector>
 
         <section class="details">
           <div hidden$="[[!isMethod]]">
