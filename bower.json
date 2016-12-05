@@ -1,17 +1,11 @@
 {
   "name": "raml-path-to-object",
   "description": "Helper element that converts selected path to a RAML definition object",
-  "authors": [
-    "The Advanced REST client authors <arc@mulesoft.com>"
-  ],
-  "keywords": [
-    "web-components",
-    "polymer"
-  ],
+  "license": "Apache-2.0 OR CC-BY-4.0",
+  "authors": ["The Advanced REST client authors <arc@mulesoft.com>"],
+  "keywords": ["web-components", "polymer", "raml", "parser normalization", "parser"],
   "private": true,
-  "main": [
-    "raml-path-to-object.html"
-  ],
+  "main": ["raml-path-to-object.html"],
   "repository": {
     "type": "git",
     "url": "git@github.com:advanced-rest-client/raml-path-to-object.git"
@@ -30,15 +24,8 @@
     "test-fixture": "PolymerElements/test-fixture#^1.0.0",
     "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0",
     "raml-path-selector": "advanced-rest-client/raml-path-selector#^1.0.0",
-    "raml-docs-helpers": "advanced-rest-client/raml-docs-helpers#^1.0.1"
+    "arc-demo-helpers": "advanced-rest-client/arc-demo-helpers#^1.0.4"
   },
-  "ignore": [
-    "**/.*",
-    "dependencyci.yml",
-    "node_modules",
-    "bower_components",
-    "test",
-    "tasks"
-  ],
+  "ignore": ["**/.*", "node_modules", "bower_components", "test", "tasks"],
   "version": "1.0.29"
 }
