@@ -1,3 +1,13 @@
+<a name="1.0.32"></a>
+## [1.0.32](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.31...v1.0.32) (2016-12-16)
+
+
+### Fix
+
+* Fixed an issue with computing the parh if the RAML was set before the path ([fcc735af48f6fa488e4782cfafd0ff3dad104c36](https://github.com/advanced-rest-client/raml-path-to-object/commit/fcc735af48f6fa488e4782cfafd0ff3dad104c36))
+
+
+
 <a name="1.0.31"></a>
 ## [1.0.31](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.30...v1.0.31) (2016-12-05)
 
