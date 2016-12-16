@@ -157,7 +157,7 @@ Polymer({
 
   observers: [
     '_ramlChanged(raml.*)',
-    '_pathChanged(selectedPath)',
+    '_pathChanged(selectedPath, raml)',
     '_fireSelectedObject(selectedObject.*)',
     '_fireSelectedParent(selectedParent.*)',
     '_fireIsMethodState(isMethod)',
@@ -210,8 +210,8 @@ Polymer({
   _ramlChanged: function() {
     this.clear();
   },
-  _pathChanged: function(path) {
-    if (!this.raml || !path) {
+  _pathChanged: function(path, raml) {
+    if (!raml || !path) {
       return this.clear();
     }
     this._analysePath(path);
@@ -219,7 +219,6 @@ Polymer({
     if (!obj) {
       return this.clear();
     }
-    console.log(obj);
     this._setSelectedObject(obj);
     this._selectParent(path);
   },
