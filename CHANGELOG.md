@@ -1,3 +1,17 @@
+<a name="1.0.33"></a>
+## [1.0.33](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.32...v1.0.33) (2017-01-10)
+
+
+### Docs
+
+* Updated the docuemntation for the elemnt ([905c2cc42532f99c2f72e082b0913f85a6188a73](https://github.com/advanced-rest-client/raml-path-to-object/commit/905c2cc42532f99c2f72e082b0913f85a6188a73))
+
+### Update
+
+* Removed any code that transforms the RAML source object in any way. All the related code has been moved to the parser and will not be available here ([502256f0bd421bb868f8a9039421c76fbf4bbb8c](https://github.com/advanced-rest-client/raml-path-to-object/commit/502256f0bd421bb868f8a9039421c76fbf4bbb8c))
+
+
+
 <a name="1.0.32"></a>
 ## [1.0.32](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.31...v1.0.32) (2016-12-16)
 
