@@ -107,6 +107,20 @@ Polymer({
       notify: true,
       readOnly: true
     },
+    // True if the selected object is a summary of the api
+    isSummary: {
+      type: Boolean,
+      readOnly: true,
+      notify: true,
+      value: false
+    },
+    // True if the selected object is a type definition
+    isType: {
+      type: Boolean,
+      readOnly: true,
+      notify: true,
+      value: false
+    },
     // Name of the `<raml-aware>` scope, so it will fill the raml property.
     aware: String,
     // If true, then it will listen for change events instead using data binding
@@ -124,7 +138,9 @@ Polymer({
     '_fireSelectedParent(selectedParent.*)',
     '_fireIsMethodState(isMethod)',
     '_fireIsResourceState(isResource)',
-    '_fireIsDocumentationState(isDocumentation)'
+    '_fireIsDocumentationState(isDocumentation)',
+    '_fireIsSummaryState(isSummary)',
+    '_fireIsTypeState(isType)'
   ],
 
   attached: function() {
@@ -167,15 +183,20 @@ Polymer({
     this._setIsMethod(false);
     this._setIsResource(false);
     this._setIsDocumentation(false);
+    this._setIsSummary(false);
+    this._setIsType(false);
     this._cachedRegexps = {};
   },
+  // Handler for the raml change. Resets the data.
   _ramlChanged: function() {
     this.clear();
   },
+  // Called when path changes and raml is set.
   _pathChanged: function(path, raml) {
     if (!raml || !path) {
       return this.clear();
     }
+
     this._analysePath(path);
     var obj = this._computeObject(path);
     if (!obj) {
@@ -186,32 +207,49 @@ Polymer({
   },
 
   _analysePath: function(path) {
-    var parts = path.split('.');
-    parts.pop(); // Last array index
-    var type = parts.pop();
-    switch (type) {
+    var _path;
+    if (path.indexOf('.') !== -1) {
+      var parts = path.split('.');
+      parts.pop(); // Last array index
+      _path = parts.pop();
+    } else {
+      _path = path;
+    }
+
+    var method = false;
+    var doc = false;
+    var resource = false;
+    var type = false;
+    var summary = false;
+
+    switch (_path) {
       case 'resources':
-        this._setIsMethod(false);
-        this._setIsResource(true);
-        this._setIsDocumentation(false);
+        resource = true;
         break;
       case 'methods':
-        this._setIsMethod(true);
-        this._setIsResource(false);
-        this._setIsDocumentation(false);
+        method = true;
         break;
       case 'documentation':
-        this._setIsMethod(false);
-        this._setIsResource(false);
-        this._setIsDocumentation(true);
+        doc = true;
+        break;
+      case 'types':
+        type = true;
+        break;
+      case 'summary':
+        summary = true;
         break;
       default:
         return this.clear();
     }
+    this._setIsMethod(method);
+    this._setIsResource(resource);
+    this._setIsDocumentation(doc);
+    this._setIsSummary(summary);
+    this._setIsType(type);
   },
 
   _selectParent: function(path) {
-    if (!(this.isMethod || this.isResource)) {
+    if (!(this.isMethod || this.isResource || this.isSummary || this.isType)) {
       // No parent.
       return this._setSelectedParent(undefined);
     }
@@ -240,6 +278,12 @@ Polymer({
   _computeObject: function(path) {
     if (this.isDocumentation) {
       // No dependencies here
+      return this.get('raml.' + path);
+    }
+    if (this.isSummary) {
+      return this.raml;
+    }
+    if (this.isType) {
       return this.get('raml.' + path);
     }
     var current = this.get('raml.' + path);
@@ -273,6 +317,18 @@ Polymer({
   _fireIsDocumentationState: function(isDocumentation) {
     this.fire('raml-is-documentation-changed', {
       state: isDocumentation
+    });
+  },
+
+  _fireIsSummaryState: function(isSummary) {
+    this.fire('raml-is-summary-changed', {
+      state: isSummary
+    });
+  },
+
+  _fireIsTypeState: function(isType) {
+    this.fire('raml-is-type-changed', {
+      state: isType
     });
   }
 });
