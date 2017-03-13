@@ -221,7 +221,6 @@ Polymer({
     var resource = false;
     var type = false;
     var summary = false;
-
     switch (_path) {
       case 'resources':
         resource = true;
@@ -284,7 +283,10 @@ Polymer({
       return this.raml;
     }
     if (this.isType) {
-      return this.get('raml.' + path);
+      var names = Object.getOwnPropertyNames(this.raml.types);
+      var match = path.match(/(\d+)/);
+      var index = Number(match[1]);
+      return this.get('raml.types.' + names[index]);
     }
     var current = this.get('raml.' + path);
     return current;
