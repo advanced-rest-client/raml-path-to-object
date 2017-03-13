@@ -51,7 +51,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         selected-parent="{{selectedParent}}"
         is-method="{{isMethod}}"
         is-resource="{{isResource}}"
-        is-documentation="{{isDocumentation}}"></raml-path-to-object>
+        is-documentation="{{isDocumentation}}"
+        is-type="{{isType}}"
+        is-summary="{{isSummary}}"></raml-path-to-object>
       <h3>The `raml-path-to-object`</h3>
       <div class="content">
         <raml-path-selector raml="[[raml]]" selected-path="{{selectedPath}}"></raml-path-selector>
@@ -78,6 +80,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           <div hidden$="[[!isDocumentation]]">
             <h3>Selected documentation</h3>
             <p>[[selectedObject.title]]</p>
+          </div>
+          <div hidden$="[[!isType]]">
+            <h3>Selected type</h3>
+            <p>[[selectedObject.key]] [[selectedObject.name]] [[selectedObject.displayName]]</p>
+            <p>[[selectedObject.description]]</p>
           </div>
         </div>
       </div>

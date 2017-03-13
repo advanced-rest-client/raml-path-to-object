@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/advanced-rest-client/raml-path-to-object.svg?branch=master)](https://travis-ci.org/advanced-rest-client/raml-path-to-object)  
+[![Build Status](https://travis-ci.org/advanced-rest-client/raml-path-to-object.svg?branch=stage)](https://travis-ci.org/advanced-rest-client/raml-path-to-object)  
 
 # raml-path-to-object
 
