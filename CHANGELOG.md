@@ -1,3 +1,21 @@
+<a name="1.0.34"></a>
+## [1.0.34](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.33...v1.0.34) (2017-03-13)
+
+
+### Fix
+
+* Fixed object selection for types ([8c5621b4f59c6e403b038706e1a427c695c95f4c](https://github.com/advanced-rest-client/raml-path-to-object/commit/8c5621b4f59c6e403b038706e1a427c695c95f4c))
+
+### New
+
+* Added support for summary and types paths ([fb83d2a4033260e7285ed257178da09b1b80e205](https://github.com/advanced-rest-client/raml-path-to-object/commit/fb83d2a4033260e7285ed257178da09b1b80e205))
+
+### Update
+
+* updated travis config. Removed test since there are no test here  ([d49402839581c7f1d488e18825d96bba05f71c6d](https://github.com/advanced-rest-client/raml-path-to-object/commit/d49402839581c7f1d488e18825d96bba05f71c6d))
+
+
+
 <a name="1.0.33"></a>
 ## [1.0.33](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.32...v1.0.33) (2017-01-10)
 
