@@ -1,3 +1,9 @@
+<a name="1.0.35"></a>
+## [1.0.35](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.34...v1.0.35) (2017-03-28)
+
+
+
+
 <a name="1.0.34"></a>
 ## [1.0.34](https://github.com/advanced-rest-client/raml-path-to-object/compare/1.0.33...v1.0.34) (2017-03-13)
 
