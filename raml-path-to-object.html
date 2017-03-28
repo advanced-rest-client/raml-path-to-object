@@ -286,7 +286,12 @@ Polymer({
       var names = Object.getOwnPropertyNames(this.raml.types);
       var match = path.match(/(\d+)/);
       var index = Number(match[1]);
-      return this.get('raml.types.' + names[index]);
+      try {
+        return this.raml.types[names[index]];
+      } catch (e) {
+        console.error('Unknown type in types list', names[index]);
+      }
+      return;
     }
     var current = this.get('raml.' + path);
     return current;
